@@ -1,0 +1,39 @@
+
+# 환경변수 및 비밀정보
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# 로컬 데이터베이스 백업
+*.sql
+*.sql.gz
+*.dump
+*.bak
+
+# 로그 및 임시 파일
+*.log
+.tmp/
+temp/
+
+# 미디어 파일
+uploads/
+media/
+*.mp4
+*.mov
+*.heic
+
+# 운영체제 및 편집기
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local backup directory
+backups/
+!backups/.gitkeep

@@ -1,0 +1,69 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: mysql+pymysql://archive:${MYSQL_PASSWORD}@db:3306/archive?charset=utf8mb4
+      MINIO_ENDPOINT: http://minio:9000
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+    depends_on:
+      db: { condition: service_healthy }
+      minio: { condition: service_healthy }
+    ports:
+      - "127.0.0.1:8000:8000"
+    networks: [private]
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: archive
+      MYSQL_USER: archive
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_0900_ai_ci"]
+    volumes: ["mysqldata:/var/lib/mysql"]
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    networks: [private]
+  minio:
+    image: cgr.dev/chainguard/minio:latest
+    user: "0:0"
+    command: server /data --console-address ":9001"
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes: ["photodata:/data"]
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    networks: [private]
+  # Optional temporary public URL. It changes when this quick tunnel restarts.
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    profiles: [tunnel]
+    restart: unless-stopped
+    command: tunnel --no-autoupdate --url http://app:8000
+    depends_on: [app]
+    networks: [private]
+  # Used only by backup.sh to archive the private MinIO data volume.
+  backup-photos:
+    image: alpine:3.21
+    profiles: [tools]
+    volumes:
+      - photodata:/photos:ro
+      - ./backups:/backups
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["tar -czf /backups/photos-volume.tar.gz -C /photos ."]
+volumes:
+  mysqldata:
+  photodata:
+networks:
+  private:
+    driver: bridge
