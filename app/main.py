@@ -28,6 +28,7 @@ log = logging.getLogger("relationship_archive")
 DATABASE_URL = os.environ["DATABASE_URL"]
 ARCHIVE_PASSWORD = os.environ["ARCHIVE_PASSWORD"]
 SESSION_SECRET = os.environ["SESSION_SECRET"]
+APP_BUILD_SHA = os.getenv("APP_BUILD_SHA", "unknown")
 COOKIE_SECURE = os.getenv("COOKIE_SECURE", "false").lower() == "true"
 MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "http://minio:9000")
 MINIO_ACCESS_KEY = os.environ["MINIO_ROOT_USER"]
@@ -164,6 +165,10 @@ def health():
     with engine.connect() as connection:
         connection.execute(text("SELECT 1"))
     return {"status": "ok"}
+
+@app.get("/api/version")
+def version():
+    return {"sha": APP_BUILD_SHA}
 
 
 @app.get("/api/session")

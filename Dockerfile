@@ -1,5 +1,7 @@
 FROM python:3.12-slim
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+ARG BUILD_SHA=unknown
+LABEL org.opencontainers.image.revision="${BUILD_SHA}"
+ENV APP_BUILD_SHA="${BUILD_SHA}" PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /app
 RUN addgroup --system app && adduser --system --ingroup app app
 COPY requirements.txt .

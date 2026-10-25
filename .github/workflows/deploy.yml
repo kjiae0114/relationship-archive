@@ -70,6 +70,14 @@ jobs:
 
       - name: Build and deploy
         run: |
+          $expectedSha = (git rev-parse HEAD).Trim()
+          if ($expectedSha -notmatch '^[0-9a-f]{40}$') {
+            throw "Cannot determine the expected Git SHA."
+          }
+
+          $env:BUILD_SHA = $expectedSha
+          Write-Host "Building and deploying commit $expectedSha"
+
           docker compose up -d --build
           if ($LASTEXITCODE -ne 0) {
             throw "Docker Compose deployment failed."
@@ -105,6 +113,60 @@ jobs:
             docker compose logs --tail 80 app
             throw "Application health check failed."
           }
+
+      - name: Verify deployed commit
+        run: |
+          $expectedSha = (git rev-parse HEAD).Trim()
+          $version = $null
+          $verified = $false
+
+          for ($i = 1; $i -le 12; $i++) {
+            try {
+              $version = Invoke-RestMethod `
+                -Uri "http://127.0.0.1:8000/api/version" `
+                -TimeoutSec 5
+
+              if ($version.sha -eq $expectedSha) {
+                $verified = $true
+                break
+              }
+
+              Write-Host "Attempt $i/12: app SHA '$($version.sha)' does not match '$expectedSha'."
+            }
+            catch {
+              Write-Host "Version check attempt $i/12 failed: $($_.Exception.Message)"
+            }
+
+            Start-Sleep -Seconds 5
+          }
+
+          if (-not $verified) {
+            docker compose ps
+            docker compose logs --tail 80 app
+            throw "Running app SHA does not match expected commit $expectedSha."
+          }
+
+          $containerId = (docker compose ps -q app)
+          if ($LASTEXITCODE -ne 0) {
+              throw "Failed to query the running app container."
+          }
+
+          $containerId = $containerId.Trim()
+          if (-not $containerId) {
+              throw "Cannot find the running app container."
+          }
+
+          $imageSha = docker inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' $containerId
+          if ($LASTEXITCODE -ne 0) {
+              throw "Failed to inspect the running app container image."
+          }
+
+          $imageSha = $imageSha.Trim()
+          if ($imageSha -ne $expectedSha) {
+              throw "Image SHA '$imageSha' does not match expected commit '$expectedSha'."
+          }
+
+          Write-Host "Verified app and image commit: $expectedSha"
 
       - name: Show service status
         if: success()
