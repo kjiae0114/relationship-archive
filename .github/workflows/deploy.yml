@@ -1,0 +1,108 @@
+
+name: Deploy relationship-archive
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: relationship-archive-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 20
+
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: 'C:\programming\01_web\relationship-archive'
+
+    steps:
+      - name: Check required tools
+        run: |
+          if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+            throw "Git is not installed or not in PATH."
+          }
+          if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
+            throw "Docker CLI is not installed or not in PATH."
+          }
+          docker info
+          if ($LASTEXITCODE -ne 0) {
+            throw "Docker Desktop is not available."
+          }
+
+      - name: Check local changes
+        run: |
+          git status --porcelain
+          if ($LASTEXITCODE -ne 0) {
+            throw "Cannot check Git working tree."
+          }
+          $changes = git status --porcelain
+          if ($changes) {
+            throw "Local changes exist. Commit or safely preserve them before deployment."
+          }
+
+      - name: Update source from GitHub
+        run: |
+          git fetch origin main
+          if ($LASTEXITCODE -ne 0) {
+            throw "Git fetch failed."
+          }
+
+          git merge --ff-only origin/main
+          if ($LASTEXITCODE -ne 0) {
+            throw "Fast-forward update failed. Check local branch state."
+          }
+
+      - name: Validate Compose configuration
+        run: |
+          docker compose config -q
+          if ($LASTEXITCODE -ne 0) {
+            throw "Docker Compose configuration validation failed."
+          }
+
+      - name: Build and deploy
+        run: |
+          docker compose up -d --build
+          if ($LASTEXITCODE -ne 0) {
+            throw "Docker Compose deployment failed."
+          }
+
+      - name: Verify application health
+        run: |
+          $healthy = $false
+
+          for ($i = 1; $i -le 12; $i++) {
+            try {
+              $response = Invoke-WebRequest `
+                -Uri "http://127.0.0.1:8000/api/health" `
+                -Method Get `
+                -TimeoutSec 5 `
+                -UseBasicParsing
+
+              if ($response.StatusCode -eq 200 -and $response.Content -match '"status"\s*:\s*"ok"') {
+                $healthy = $true
+                Write-Host "Application health check passed."
+                break
+              }
+            }
+            catch {
+              Write-Host "Health check attempt $i/12 failed: $($_.Exception.Message)"
+            }
+
+            Start-Sleep -Seconds 5
+          }
+
+          if (-not $healthy) {
+            docker compose ps
+            docker compose logs --tail 80 app
+            throw "Application health check failed."
+          }
+
+      - name: Show service status
+        if: success()
+        run: docker compose ps
