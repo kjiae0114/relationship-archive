@@ -95,17 +95,22 @@ def startup() -> None:
                 place VARCHAR(500) NULL,
                 image VARCHAR(1000) NULL,
                 media_type VARCHAR(20) NULL,
+                images JSON NULL,
                 created_at BIGINT NULL,
                 updated_at BIGINT NULL,
                 INDEX idx_records_date (record_date),
                 INDEX idx_records_type_date (record_type, record_date)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
         """))
-        try:
-            connection.execute(text("ALTER TABLE records ADD COLUMN media_type VARCHAR(20) NULL"))
-        except Exception as exc:
-            if "duplicate column" not in str(exc).lower() and "1060" not in str(exc):
-                raise
+        for column_sql in (
+            "ALTER TABLE records ADD COLUMN media_type VARCHAR(20) NULL",
+            "ALTER TABLE records ADD COLUMN images JSON NULL",
+        ):
+            try:
+                connection.execute(text(column_sql))
+            except Exception as exc:
+                if "duplicate column" not in str(exc).lower() and "1060" not in str(exc):
+                    raise
         connection.execute(text("""
             CREATE TABLE IF NOT EXISTS archive_categories (
                 category_id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -289,7 +294,7 @@ def get_records(request: Request):
     with engine.connect() as connection:
         rows = connection.execute(text("""
             SELECT record_id, record_type, record_date, title, body, category,
-                   certainty, tags, place, image, media_type, created_at, updated_at
+                   certainty, tags, place, image, media_type, images, created_at, updated_at
             FROM records
             ORDER BY record_date DESC, updated_at DESC
         """)).mappings().all()
@@ -303,6 +308,28 @@ def get_records(request: Request):
         item["createdAt"] = item.pop("created_at")
         item["updatedAt"] = item.pop("updated_at")
         item["mediaType"] = item.pop("media_type") or ("image" if item.get("image") else None)
+        raw_images = item.pop("images", None)
+        if isinstance(raw_images, list):
+            item["images"] = [
+                media for media in raw_images
+                if isinstance(media, dict) and isinstance(media.get("url"), str) and media["url"]
+            ]
+        elif isinstance(raw_images, str):
+            try:
+                parsed_images = json.loads(raw_images)
+            except (TypeError, json.JSONDecodeError):
+                parsed_images = []
+            item["images"] = [
+                media for media in parsed_images
+                if isinstance(media, dict) and isinstance(media.get("url"), str) and media["url"]
+            ] if isinstance(parsed_images, list) else []
+        else:
+            item["images"] = []
+        if not item["images"] and item.get("image"):
+            item["images"] = [{"url": item["image"], "mediaType": item.get("mediaType") or "image"}]
+        if item["images"]:
+            item["image"] = item["images"][0]["url"]
+            item["mediaType"] = item["images"][0].get("mediaType") or "image"
         item["tags"] = item["tags"] if isinstance(item["tags"], list) else json.loads(item["tags"] or "[]")
         records.append(item)
     return {"records": records}
@@ -320,6 +347,21 @@ def put_records(body: RecordsBody, request: Request):
             raise HTTPException(status_code=422, detail="기록의 ID와 제목은 필수입니다.")
         if len(str(record.get("title", ""))) > 500 or len(str(record.get("body", ""))) > 100000:
             raise HTTPException(status_code=422, detail="제목 또는 본문이 너무 깁니다.")
+        raw_images = record.get("images")
+        if isinstance(raw_images, list):
+            media_items = [
+                {"url": str(media.get("url", ""))[:1000], "mediaType": str(media.get("mediaType") or "image")[:20]}
+                for media in raw_images
+                if isinstance(media, dict) and isinstance(media.get("url"), str) and media.get("url")
+            ]
+        else:
+            media_items = []
+        if not media_items and record.get("image"):
+            media_items = [{
+                "url": str(record.get("image") or "")[:1000],
+                "mediaType": str(record.get("mediaType") or "image")[:20],
+            }]
+        primary_media = media_items[0] if media_items else {"url": "", "mediaType": ""}
         rows.append({
             "record_id": str(record["id"]),
             "record_type": str(record.get("type", "diary"))[:30],
@@ -330,8 +372,9 @@ def put_records(body: RecordsBody, request: Request):
             "certainty": str(record.get("certainty") or "")[:100],
             "tags": json.dumps(record.get("tags") if isinstance(record.get("tags"), list) else [], ensure_ascii=False),
             "place": str(record.get("place") or "")[:500],
-            "image": str(record.get("image") or "")[:1000],
-            "media_type": str(record.get("mediaType") or ("image" if record.get("image") else ""))[:20],
+            "image": primary_media["url"],
+            "media_type": primary_media["mediaType"],
+            "images": json.dumps(media_items, ensure_ascii=False),
             "created_at": int(record.get("createdAt") or 0),
             "updated_at": int(record.get("updatedAt") or 0),
         })
@@ -344,10 +387,10 @@ def put_records(body: RecordsBody, request: Request):
             connection.execute(text("""
                 INSERT INTO records
                     (record_id, record_type, record_date, title, body, category,
-                     certainty, tags, place, image, media_type, created_at, updated_at)
+                     certainty, tags, place, image, media_type, images, created_at, updated_at)
                 VALUES
                     (:record_id, :record_type, :record_date, :title, :body, :category,
-                     :certainty, CAST(:tags AS JSON), :place, :image, :media_type, :created_at, :updated_at)
+                     :certainty, CAST(:tags AS JSON), :place, :image, :media_type, CAST(:images AS JSON), :created_at, :updated_at)
             """), rows)
     return {"ok": True, "count": len(rows)}
 
