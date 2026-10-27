@@ -1,4 +1,4 @@
-"""Private relationship archive API.
+﻿"""Private relationship archive API.
 
 Small, deliberately readable FastAPI application. All user data is private to
 one account; records are stored as a JSON document in MySQL and image bytes in
@@ -123,7 +123,7 @@ def startup() -> None:
         """))
         seeded = connection.execute(text("SELECT setting_value FROM archive_settings WHERE setting_key='archive_categories_seeded'")).scalar_one_or_none()
         if seeded is None:
-            defaults = ["좋아하는 것", "싫어하는 것", "두려워하는 것", "꿈과 목표", "가치관", "습관과 특징", "대화와 에피소드", "음식", "장소", "기억", "기타"]
+            defaults = ["醫뗭븘?섎뒗 寃?, "?レ뼱?섎뒗 寃?, "?먮젮?뚰븯??寃?, "轅덇낵 紐⑺몴", "媛移섍?", "?듦?怨??뱀쭠", "??붿? ?먰뵾?뚮뱶", "?뚯떇", "?μ냼", "湲곗뼲", "湲고?"]
             for order, name in enumerate(defaults):
                 connection.execute(text("""
                     INSERT IGNORE INTO archive_categories (name, is_default, sort_order, created_at)
@@ -156,7 +156,7 @@ async def security_headers(request: Request, call_next):
 
 def require_auth(request: Request) -> None:
     if request.session.get("authenticated") is not True:
-        raise HTTPException(status_code=401, detail="로그인이 필요합니다.")
+        raise HTTPException(status_code=401, detail="濡쒓렇?몄씠 ?꾩슂?⑸땲??")
 
 
 @app.get("/api/health")
@@ -164,6 +164,11 @@ def health():
     with engine.connect() as connection:
         connection.execute(text("SELECT 1"))
     return {"status": "ok"}
+
+
+@app.get("/api/version")
+def version():
+    return {"sha": os.getenv("APP_BUILD_SHA", "unknown")}
 
 
 @app.get("/api/session")
@@ -176,7 +181,7 @@ def login(body: LoginBody, request: Request):
     # Single-account private service. Use a long, unique password in .env.
     if not secrets.compare_digest(body.password, ARCHIVE_PASSWORD):
         time.sleep(0.8)
-        raise HTTPException(status_code=401, detail="비밀번호가 올바르지 않습니다.")
+        raise HTTPException(status_code=401, detail="鍮꾨?踰덊샇媛 ?щ컮瑜댁? ?딆뒿?덈떎.")
     request.session.clear()
     request.session["authenticated"] = True
     return {"ok": True}
@@ -205,11 +210,11 @@ def put_settings(body: ArchiveSettingsBody, request: Request):
         try:
             parsed = datetime.strptime(value, "%Y-%m-%d").date()
         except ValueError:
-            raise HTTPException(status_code=422, detail="연애 시작일은 YYYY-MM-DD 형식이어야 합니다.")
+            raise HTTPException(status_code=422, detail="?곗븷 ?쒖옉?쇱? YYYY-MM-DD ?뺤떇?댁뼱???⑸땲??")
         if parsed.isoformat() != value:
-            raise HTTPException(status_code=422, detail="연애 시작일을 확인해 주세요.")
+            raise HTTPException(status_code=422, detail="?곗븷 ?쒖옉?쇱쓣 ?뺤씤??二쇱꽭??")
         if parsed > datetime.now().date():
-            raise HTTPException(status_code=422, detail="연애 시작일은 오늘 이후일 수 없습니다.")
+            raise HTTPException(status_code=422, detail="?곗븷 ?쒖옉?쇱? ?ㅻ뒛 ?댄썑?????놁뒿?덈떎.")
     phrase = body.headerPhrase.strip()
     with engine.begin() as connection:
         connection.execute(text("""
@@ -238,7 +243,7 @@ def create_category(body: CategoryBody, request: Request):
     require_auth(request)
     name = body.name.strip()
     if not name:
-        raise HTTPException(status_code=422, detail="카테고리 이름을 입력해 주세요.")
+        raise HTTPException(status_code=422, detail="移댄뀒怨좊━ ?대쫫???낅젰??二쇱꽭??")
     try:
         with engine.begin() as connection:
             next_order = connection.execute(text("SELECT COALESCE(MAX(sort_order), 0) + 1 FROM archive_categories")).scalar_one()
@@ -246,7 +251,7 @@ def create_category(body: CategoryBody, request: Request):
             category_id = result.lastrowid
     except Exception as exc:
         if "duplicate" in str(exc).lower() or "1062" in str(exc):
-            raise HTTPException(status_code=409, detail="이미 있는 카테고리 이름이에요.")
+            raise HTTPException(status_code=409, detail="?대? ?덈뒗 移댄뀒怨좊━ ?대쫫?댁뿉??")
         raise
     return {"id": category_id, "name": name, "isDefault": False, "sortOrder": next_order}
 
@@ -256,12 +261,12 @@ def rename_category(category_id: int, body: CategoryBody, request: Request):
     require_auth(request)
     name = body.name.strip()
     if not name:
-        raise HTTPException(status_code=422, detail="카테고리 이름을 입력해 주세요.")
+        raise HTTPException(status_code=422, detail="移댄뀒怨좊━ ?대쫫???낅젰??二쇱꽭??")
     try:
         with engine.begin() as connection:
             old = connection.execute(text("SELECT name FROM archive_categories WHERE category_id=:id"), {"id": category_id}).scalar_one_or_none()
             if old is None:
-                raise HTTPException(status_code=404, detail="카테고리를 찾을 수 없어요.")
+                raise HTTPException(status_code=404, detail="移댄뀒怨좊━瑜?李얠쓣 ???놁뼱??")
             if old != name:
                 connection.execute(text("UPDATE records SET category=:new_name WHERE category=:old_name"), {"new_name": name, "old_name": old})
                 connection.execute(text("UPDATE archive_categories SET name=:name WHERE category_id=:id"), {"name": name, "id": category_id})
@@ -269,7 +274,7 @@ def rename_category(category_id: int, body: CategoryBody, request: Request):
         raise
     except Exception as exc:
         if "duplicate" in str(exc).lower() or "1062" in str(exc):
-            raise HTTPException(status_code=409, detail="이미 있는 카테고리 이름이에요.")
+            raise HTTPException(status_code=409, detail="?대? ?덈뒗 移댄뀒怨좊━ ?대쫫?댁뿉??")
         raise
     return {"id": category_id, "name": name}
 
@@ -280,10 +285,10 @@ def delete_category(category_id: int, request: Request):
     with engine.begin() as connection:
         row = connection.execute(text("SELECT name FROM archive_categories WHERE category_id=:id"), {"id": category_id}).mappings().first()
         if not row:
-            raise HTTPException(status_code=404, detail="카테고리를 찾을 수 없어요.")
+            raise HTTPException(status_code=404, detail="移댄뀒怨좊━瑜?李얠쓣 ???놁뼱??")
         used = connection.execute(text("SELECT COUNT(*) FROM records WHERE category=:name"), {"name": row["name"]}).scalar_one()
         if used:
-            raise HTTPException(status_code=409, detail=f"이 카테고리를 사용하는 기록이 {used}개 있어요. 기록을 다른 카테고리로 옮긴 뒤 삭제해 주세요.")
+            raise HTTPException(status_code=409, detail=f"??移댄뀒怨좊━瑜??ъ슜?섎뒗 湲곕줉??{used}媛??덉뼱?? 湲곕줉???ㅻⅨ 移댄뀒怨좊━濡???릿 ????젣??二쇱꽭??")
         connection.execute(text("DELETE FROM archive_categories WHERE category_id=:id"), {"id": category_id})
     return {"ok": True}
 
@@ -339,14 +344,14 @@ def get_records(request: Request):
 def put_records(body: RecordsBody, request: Request):
     require_auth(request)
     if len(body.records) > 10000:
-        raise HTTPException(status_code=413, detail="기록이 너무 많습니다.")
+        raise HTTPException(status_code=413, detail="湲곕줉???덈Т 留롮뒿?덈떎.")
 
     rows = []
     for record in body.records:
         if not isinstance(record.get("id"), (str, int)) or not record.get("title"):
-            raise HTTPException(status_code=422, detail="기록의 ID와 제목은 필수입니다.")
+            raise HTTPException(status_code=422, detail="湲곕줉??ID? ?쒕ぉ? ?꾩닔?낅땲??")
         if len(str(record.get("title", ""))) > 500 or len(str(record.get("body", ""))) > 100000:
-            raise HTTPException(status_code=422, detail="제목 또는 본문이 너무 깁니다.")
+            raise HTTPException(status_code=422, detail="?쒕ぉ ?먮뒗 蹂몃Ц???덈Т 源곷땲??")
         raw_images = record.get("images")
         if isinstance(raw_images, list):
             media_items = [
@@ -406,12 +411,12 @@ async def upload_photo(request: Request, file: UploadFile = File(...)):
     content_type = (file.content_type or "").lower()
     extension = allowed_types.get(content_type)
     if not extension:
-        raise HTTPException(status_code=415, detail="JPG, PNG, WebP, GIF, HEIC, MP4, MOV, WEBM 형식만 지원합니다.")
+        raise HTTPException(status_code=415, detail="JPG, PNG, WebP, GIF, HEIC, MP4, MOV, WEBM ?뺤떇留?吏?먰빀?덈떎.")
     is_video = content_type.startswith("video/")
     max_size = 200 * 1024 * 1024 if is_video else 15 * 1024 * 1024
     data = await file.read(max_size + 1)
     if len(data) > max_size:
-        limit_label = "동영상은 200MB 이하로 올려주세요." if is_video else "사진은 15MB 이하로 올려주세요."
+        limit_label = "?숈쁺?곸? 200MB ?댄븯濡??щ젮二쇱꽭??" if is_video else "?ъ쭊? 15MB ?댄븯濡??щ젮二쇱꽭??"
         raise HTTPException(status_code=413, detail=limit_label)
     key = f"{uuid.uuid4().hex}.{extension}"
     photo_store.put_object(
@@ -424,7 +429,7 @@ async def upload_photo(request: Request, file: UploadFile = File(...)):
 def get_photo(key: str, request: Request):
     require_auth(request)
     if "/" in key or ".." in key:
-        raise HTTPException(status_code=400, detail="잘못된 파일 키입니다.")
+        raise HTTPException(status_code=400, detail="?섎せ???뚯씪 ?ㅼ엯?덈떎.")
     try:
         stored = photo_store.get_object(Bucket=BUCKET, Key=key)
         return StreamingResponse(
@@ -433,9 +438,11 @@ def get_photo(key: str, request: Request):
             headers={"Content-Length": str(stored["ContentLength"]), "Cache-Control": "private, no-store"},
         )
     except Exception:
-        raise HTTPException(status_code=404, detail="사진을 찾을 수 없습니다.")
+        raise HTTPException(status_code=404, detail="?ъ쭊??李얠쓣 ???놁뒿?덈떎.")
 
 
 @app.get("/")
 def index():
     return FileResponse(Path(__file__).parent / "index.html")
+
+
