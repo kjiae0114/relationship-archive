@@ -9,6 +9,7 @@ import json
 import logging
 import math
 import os
+import re
 import secrets
 import threading
 import time
@@ -26,6 +27,7 @@ from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import create_engine, text
+from sqlalchemy.exc import IntegrityError
 from starlette.middleware.sessions import SessionMiddleware
 
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
@@ -91,6 +93,47 @@ class CategoryBody(BaseModel):
     name: str = Field(min_length=1, max_length=100)
 
 
+class PlaceCategoryBody(BaseModel):
+    # 길이/형식 검사는 place_category_fields()에서 한 번에 하고 422로 돌려준다.
+    name: str
+    color: str
+
+
+# 장소 전용 카테고리(사람용 archive_categories와 별개).
+PLACE_CATEGORY_DEFAULTS = (
+    ("음식점", "#e4572e"),
+    ("데이트 코스", "#d6409f"),
+    ("놀이공원", "#2e86de"),
+    ("전시회", "#2a9d8f"),
+)
+PLACE_CATEGORY_SEED_KEY = "place_categories_seeded"
+PLACE_CATEGORY_COLOR_RE = re.compile(r"#[0-9a-fA-F]{6}")
+
+
+def seed_place_categories(connection) -> bool:
+    """기본 장소 카테고리를 단 한 번만 넣는다(표준 SQL이라 SQLite 테스트에서도 동작).
+
+    표시(seeded) 키가 있으면 사용자가 지운 기본값이 있어도 다시 만들지 않는다.
+    """
+    seeded = connection.execute(
+        text("SELECT setting_value FROM archive_settings WHERE setting_key=:key"),
+        {"key": PLACE_CATEGORY_SEED_KEY},
+    ).scalar_one_or_none()
+    if seeded is not None:
+        return False
+    now = int(time.time() * 1000)
+    for order, (name, color) in enumerate(PLACE_CATEGORY_DEFAULTS):
+        connection.execute(
+            text("INSERT INTO place_categories (name, color, sort_order, created_at) VALUES (:name, :color, :sort_order, :created_at)"),
+            {"name": name, "color": color, "sort_order": order, "created_at": now},
+        )
+    connection.execute(
+        text("INSERT INTO archive_settings (setting_key, setting_value) VALUES (:key, '1')"),
+        {"key": PLACE_CATEGORY_SEED_KEY},
+    )
+    return True
+
+
 @app.on_event("startup")
 def startup() -> None:
     """Create the records table and private photo bucket if needed."""
@@ -128,6 +171,7 @@ def startup() -> None:
             "ALTER TABLE records ADD COLUMN address VARCHAR(500) NULL",
             "ALTER TABLE records ADD COLUMN latitude DECIMAL(10,7) NULL",
             "ALTER TABLE records ADD COLUMN longitude DECIMAL(10,7) NULL",
+            "ALTER TABLE records ADD COLUMN place_category_id BIGINT NULL",
         ):
             try:
                 connection.execute(text(column_sql))
@@ -159,6 +203,17 @@ def startup() -> None:
                 WHERE category IS NOT NULL AND TRIM(category) <> ''
             """), {"created_at": int(time.time() * 1000)})
             connection.execute(text("INSERT INTO archive_settings (setting_key, setting_value) VALUES ('archive_categories_seeded', '1')"))
+        connection.execute(text("""
+            CREATE TABLE IF NOT EXISTS place_categories (
+                place_category_id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(50) NOT NULL UNIQUE,
+                color CHAR(7) NOT NULL,
+                sort_order INT NOT NULL DEFAULT 100,
+                created_at BIGINT NOT NULL,
+                INDEX idx_place_categories_order (sort_order, place_category_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+        """))
+        seed_place_categories(connection)
 
     try:
         photo_store.head_bucket(Bucket=BUCKET)
@@ -317,6 +372,87 @@ def delete_category(category_id: int, request: Request):
 
 
 PLACE_KINDS = ("visit", "home")
+
+
+def place_category_fields(body: "PlaceCategoryBody") -> tuple[str, str]:
+    name = body.name.strip()
+    if not 1 <= len(name) <= 50:
+        raise HTTPException(status_code=422, detail="카테고리 이름은 1~50자로 입력해 주세요.")
+    # fullmatch: 끝에 줄바꿈이 붙은 값이나 CSS 주입 문자열을 막는다.
+    if not PLACE_CATEGORY_COLOR_RE.fullmatch(body.color):
+        raise HTTPException(status_code=422, detail="색은 #RRGGBB 형식이어야 해요.")
+    return name, body.color
+
+
+def _duplicate_place_category() -> HTTPException:
+    return HTTPException(status_code=409, detail="이미 있는 장소 카테고리 이름이에요.")
+
+
+@app.get("/api/place-categories")
+def get_place_categories(request: Request):
+    require_auth(request)
+    with engine.connect() as connection:
+        rows = connection.execute(text(
+            "SELECT place_category_id AS id, name, color, sort_order AS sortOrder FROM place_categories ORDER BY sort_order, place_category_id"
+        )).mappings().all()
+    return {"categories": [dict(row) for row in rows]}
+
+
+@app.post("/api/place-categories")
+def create_place_category(body: PlaceCategoryBody, request: Request):
+    require_auth(request)
+    name, color = place_category_fields(body)
+    try:
+        with engine.begin() as connection:
+            if connection.execute(text("SELECT 1 FROM place_categories WHERE name=:name"), {"name": name}).first():
+                raise _duplicate_place_category()
+            next_order = connection.execute(text("SELECT COALESCE(MAX(sort_order), 0) + 1 FROM place_categories")).scalar_one()
+            result = connection.execute(
+                text("INSERT INTO place_categories (name, color, sort_order, created_at) VALUES (:name, :color, :sort_order, :created_at)"),
+                {"name": name, "color": color, "sort_order": next_order, "created_at": int(time.time() * 1000)},
+            )
+            category_id = result.lastrowid
+    except IntegrityError:
+        raise _duplicate_place_category()
+    return {"id": category_id, "name": name, "color": color, "sortOrder": next_order}
+
+
+@app.put("/api/place-categories/{category_id}")
+def update_place_category(category_id: int, body: PlaceCategoryBody, request: Request):
+    require_auth(request)
+    name, color = place_category_fields(body)
+    try:
+        with engine.begin() as connection:
+            if connection.execute(text("SELECT 1 FROM place_categories WHERE place_category_id=:id"), {"id": category_id}).first() is None:
+                raise HTTPException(status_code=404, detail="장소 카테고리를 찾을 수 없어요.")
+            if connection.execute(text("SELECT 1 FROM place_categories WHERE name=:name AND place_category_id<>:id"), {"name": name, "id": category_id}).first():
+                raise _duplicate_place_category()
+            connection.execute(
+                text("UPDATE place_categories SET name=:name, color=:color WHERE place_category_id=:id"),
+                {"name": name, "color": color, "id": category_id},
+            )
+    except IntegrityError:
+        raise _duplicate_place_category()
+    return {"id": category_id, "name": name, "color": color}
+
+
+@app.delete("/api/place-categories/{category_id}")
+def delete_place_category(category_id: int, request: Request):
+    require_auth(request)
+    # 장소 기록은 지우지 않고 미분류(NULL)로 돌린 뒤 카테고리만 삭제한다(한 트랜잭션).
+    with engine.begin() as connection:
+        if connection.execute(text("SELECT 1 FROM place_categories WHERE place_category_id=:id"), {"id": category_id}).first() is None:
+            raise HTTPException(status_code=404, detail="장소 카테고리를 찾을 수 없어요.")
+        moved = connection.execute(text("UPDATE records SET place_category_id=NULL WHERE place_category_id=:id"), {"id": category_id}).rowcount
+        connection.execute(text("DELETE FROM place_categories WHERE place_category_id=:id"), {"id": category_id})
+    return {"ok": True, "uncategorized": moved}
+
+
+def parse_place_category_id(value: Any) -> int | None:
+    """정수 id만 통과. 그 외(빈 값, bool, 문자열, 실수)는 None으로 저장한다."""
+    if isinstance(value, bool) or not isinstance(value, int):
+        return None
+    return value
 
 
 def parse_coordinate(value: Any, label: str, limit: float) -> float | None:
@@ -495,7 +631,7 @@ def get_records(request: Request):
     with engine.connect() as connection:
         rows = connection.execute(text("""
             SELECT record_id, record_type, record_date, title, body, category,
-                   certainty, tags, place, place_kind, address, latitude, longitude,
+                   certainty, tags, place, place_kind, place_category_id, address, latitude, longitude,
                    image, media_type, images, created_at, updated_at
             FROM records
             ORDER BY record_date DESC, updated_at DESC
@@ -510,6 +646,7 @@ def get_records(request: Request):
         item["createdAt"] = item.pop("created_at")
         item["updatedAt"] = item.pop("updated_at")
         item["placeKind"] = item.pop("place_kind") or "visit"
+        item["placeCategoryId"] = item.pop("place_category_id")
         item["address"] = item.pop("address") or ""
         item["latitude"] = float(item["latitude"]) if item.get("latitude") is not None else None
         item["longitude"] = float(item["longitude"]) if item.get("longitude") is not None else None
@@ -579,6 +716,7 @@ def put_records(body: RecordsBody, request: Request):
             "tags": json.dumps(record.get("tags") if isinstance(record.get("tags"), list) else [], ensure_ascii=False),
             "place": str(record.get("place") or "")[:500],
             "place_kind": parse_place_kind(record.get("placeKind")),
+            "place_category_id": parse_place_category_id(record.get("placeCategoryId")),
             "address": str(record.get("address") or "")[:500],
             "latitude": parse_coordinate(record.get("latitude"), "위도", 90),
             "longitude": parse_coordinate(record.get("longitude"), "경도", 180),
@@ -589,18 +727,27 @@ def put_records(body: RecordsBody, request: Request):
             "updated_at": int(record.get("updatedAt") or 0),
         })
 
+    # 우리 집은 하나뿐이다. DELETE 전에 검증해서 실패 시 기존 데이터를 그대로 둔다.
+    if sum(1 for row in rows if row["record_type"] == "place" and row["place_kind"] == "home") > 1:
+        raise HTTPException(status_code=422, detail="우리 집으로 지정한 장소는 하나만 둘 수 있어요.")
+
     # This endpoint replaces the current snapshot, matching the existing UI.
     # The transaction means a failed import/save won't leave a half-written list.
     with engine.begin() as connection:
+        # 없는 카테고리 id(오래된 탭 등)는 NULL로 저장해 저장 전체가 막히지 않게 한다.
+        known_ids = {row[0] for row in connection.execute(text("SELECT place_category_id FROM place_categories"))}
+        for row in rows:
+            if row["place_category_id"] not in known_ids:
+                row["place_category_id"] = None
         connection.execute(text("DELETE FROM records"))
         if rows:
             connection.execute(text("""
                 INSERT INTO records
                     (record_id, record_type, record_date, title, body, category,
-                     certainty, tags, place, place_kind, address, latitude, longitude, image, media_type, images, created_at, updated_at)
+                     certainty, tags, place, place_kind, place_category_id, address, latitude, longitude, image, media_type, images, created_at, updated_at)
                 VALUES
                     (:record_id, :record_type, :record_date, :title, :body, :category,
-                     :certainty, CAST(:tags AS JSON), :place, :place_kind, :address, :latitude, :longitude, :image, :media_type, CAST(:images AS JSON), :created_at, :updated_at)
+                     :certainty, CAST(:tags AS JSON), :place, :place_kind, :place_category_id, :address, :latitude, :longitude, :image, :media_type, CAST(:images AS JSON), :created_at, :updated_at)
             """), rows)
     return {"ok": True, "count": len(rows)}
 

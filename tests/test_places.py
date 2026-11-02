@@ -40,6 +40,7 @@ CREATE_RECORDS = """
         tags TEXT NOT NULL,
         place VARCHAR(500) NULL,
         place_kind VARCHAR(20) NULL,
+        place_category_id BIGINT NULL,
         address VARCHAR(500) NULL,
         latitude DECIMAL(10,7) NULL,
         longitude DECIMAL(10,7) NULL,
@@ -48,6 +49,17 @@ CREATE_RECORDS = """
         images TEXT NULL,
         created_at BIGINT NULL,
         updated_at BIGINT NULL
+    )
+"""
+
+# PUT /api/records checks category ids against this table (no seed data needed here).
+CREATE_PLACE_CATEGORIES = """
+    CREATE TABLE place_categories (
+        place_category_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name VARCHAR(50) NOT NULL UNIQUE,
+        color CHAR(7) NOT NULL,
+        sort_order INT NOT NULL DEFAULT 100,
+        created_at BIGINT NOT NULL
     )
 """
 
@@ -63,6 +75,7 @@ def client(monkeypatch):
 
     with engine.begin() as connection:
         connection.execute(text(CREATE_RECORDS))
+        connection.execute(text(CREATE_PLACE_CATEGORIES))
     monkeypatch.setattr(main, "engine", engine)
 
     test_client = TestClient(main.app)  # no `with`: startup (MySQL/MinIO setup) is not run
