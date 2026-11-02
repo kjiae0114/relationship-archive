@@ -6,6 +6,7 @@ an S3-compatible MinIO bucket. See README.md before exposing it to the internet.
 """
 import json
 import logging
+import math
 import os
 import secrets
 import time
@@ -105,6 +106,10 @@ def startup() -> None:
         for column_sql in (
             "ALTER TABLE records ADD COLUMN media_type VARCHAR(20) NULL",
             "ALTER TABLE records ADD COLUMN images JSON NULL",
+            "ALTER TABLE records ADD COLUMN place_kind VARCHAR(20) NULL",
+            "ALTER TABLE records ADD COLUMN address VARCHAR(500) NULL",
+            "ALTER TABLE records ADD COLUMN latitude DECIMAL(10,7) NULL",
+            "ALTER TABLE records ADD COLUMN longitude DECIMAL(10,7) NULL",
         ):
             try:
                 connection.execute(text(column_sql))
@@ -293,13 +298,42 @@ def delete_category(category_id: int, request: Request):
     return {"ok": True}
 
 
+PLACE_KINDS = ("visit", "home")
+
+
+def parse_coordinate(value: Any, label: str, limit: float) -> float | None:
+    """Return a finite coordinate within +/-limit, or None when left empty."""
+    if value is None or value == "":
+        return None
+    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+        raise HTTPException(status_code=422, detail=f"{label} 값이 올바르지 않습니다.")
+    try:
+        number = float(value)
+    except (ValueError, OverflowError):
+        raise HTTPException(status_code=422, detail=f"{label} 값이 올바르지 않습니다.")
+    if not math.isfinite(number) or abs(number) > limit:
+        raise HTTPException(status_code=422, detail=f"{label} 값이 범위를 벗어났습니다.")
+    return number
+
+
+def parse_place_kind(value: Any) -> str:
+    # Unknown kinds are rejected instead of silently saved as "visit", so a typo
+    # never turns the special home marker into an ordinary place.
+    if value is None or value == "":
+        return "visit"
+    if not isinstance(value, str) or value not in PLACE_KINDS:
+        raise HTTPException(status_code=422, detail="장소 유형이 올바르지 않습니다.")
+    return value
+
+
 @app.get("/api/records")
 def get_records(request: Request):
     require_auth(request)
     with engine.connect() as connection:
         rows = connection.execute(text("""
             SELECT record_id, record_type, record_date, title, body, category,
-                   certainty, tags, place, image, media_type, images, created_at, updated_at
+                   certainty, tags, place, place_kind, address, latitude, longitude,
+                   image, media_type, images, created_at, updated_at
             FROM records
             ORDER BY record_date DESC, updated_at DESC
         """)).mappings().all()
@@ -312,6 +346,10 @@ def get_records(request: Request):
         item["date"] = item.pop("record_date")
         item["createdAt"] = item.pop("created_at")
         item["updatedAt"] = item.pop("updated_at")
+        item["placeKind"] = item.pop("place_kind") or "visit"
+        item["address"] = item.pop("address") or ""
+        item["latitude"] = float(item["latitude"]) if item.get("latitude") is not None else None
+        item["longitude"] = float(item["longitude"]) if item.get("longitude") is not None else None
         item["mediaType"] = item.pop("media_type") or ("image" if item.get("image") else None)
         raw_images = item.pop("images", None)
         if isinstance(raw_images, list):
@@ -377,6 +415,10 @@ def put_records(body: RecordsBody, request: Request):
             "certainty": str(record.get("certainty") or "")[:100],
             "tags": json.dumps(record.get("tags") if isinstance(record.get("tags"), list) else [], ensure_ascii=False),
             "place": str(record.get("place") or "")[:500],
+            "place_kind": parse_place_kind(record.get("placeKind")),
+            "address": str(record.get("address") or "")[:500],
+            "latitude": parse_coordinate(record.get("latitude"), "위도", 90),
+            "longitude": parse_coordinate(record.get("longitude"), "경도", 180),
             "image": primary_media["url"],
             "media_type": primary_media["mediaType"],
             "images": json.dumps(media_items, ensure_ascii=False),
@@ -392,10 +434,10 @@ def put_records(body: RecordsBody, request: Request):
             connection.execute(text("""
                 INSERT INTO records
                     (record_id, record_type, record_date, title, body, category,
-                     certainty, tags, place, image, media_type, images, created_at, updated_at)
+                     certainty, tags, place, place_kind, address, latitude, longitude, image, media_type, images, created_at, updated_at)
                 VALUES
                     (:record_id, :record_type, :record_date, :title, :body, :category,
-                     :certainty, CAST(:tags AS JSON), :place, :image, :media_type, CAST(:images AS JSON), :created_at, :updated_at)
+                     :certainty, CAST(:tags AS JSON), :place, :place_kind, :address, :latitude, :longitude, :image, :media_type, CAST(:images AS JSON), :created_at, :updated_at)
             """), rows)
     return {"ok": True, "count": len(rows)}
 
