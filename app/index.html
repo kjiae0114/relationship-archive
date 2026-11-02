@@ -69,6 +69,23 @@
 .today-memory-text small{display:block;color:var(--accent);font-size:11px}
 .today-memory-text strong{display:block;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .today-memories-more{margin:8px 0 0;font-size:12px;color:var(--muted)}
+/* 기념일과 디데이 */
+.upcoming-days{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 22px}
+.upcoming-chip{display:inline-flex;align-items:center;gap:8px;max-width:100%;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:7px 14px;font-size:13px}
+.upcoming-chip span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.upcoming-chip strong{flex:0 0 auto;color:var(--accent);font-weight:700}
+.upcoming-chip.is-today{border-color:var(--accent);background:var(--accent2)}
+.anniversary-form{display:grid;grid-template-columns:minmax(0,1fr) 170px auto auto;gap:10px;align-items:end;margin-top:16px}
+.anniversary-form .field{margin:0}
+.anniv-row{display:grid;grid-template-columns:minmax(0,1fr) 150px auto 64px auto;gap:8px;align-items:center}
+.anniv-row input:not([type=checkbox]){min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:9px;color:var(--text);padding:9px 11px}
+.anniv-repeat{display:inline-flex;align-items:center;gap:5px;font-size:13px;white-space:nowrap}
+.anniv-dday{font-size:12px;color:var(--accent);text-align:center}
+.day-anniv{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;color:#e6c27b}
+.calendar-anniversaries{display:grid;gap:6px;margin-bottom:10px}
+.calendar-anniversary{padding:10px 14px;border:1px solid #5a4d2e;border-radius:12px;background:#2a2518;color:#e6c27b;font-size:13px;overflow-wrap:anywhere}
+.calendar-anniversary small{color:var(--muted);margin-left:6px}
+@media(max-width:650px){.anniversary-form{grid-template-columns:1fr 1fr}.anniv-row{grid-template-columns:1fr 1fr}}
 </style>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
@@ -97,6 +114,7 @@
   <div class="topline"><div><div class="eyebrow" id="eyebrow">YOUR PRIVATE ARCHIVE</div><h1 class="page-title" id="pageTitle">전체 기록</h1><div class="subtitle" id="pageSub">함께한 순간과 그 사람에 대해 알게 된 것들을 모아두는 곳.</div></div><div class="actions"><button class="btn" id="quickPhoto">＋ 미디어</button><button class="btn primary" id="addRecord">＋ 기록 추가</button><button class="btn" id="logoutBtn" title="로그아웃">로그아웃</button></div></div>
   <section id="view-all">
     <div class="stats"><div class="stat"><span>전체 기록</span><strong id="statRecords">0</strong></div><div class="stat"><span>사진 · 동영상</span><strong id="statPhotos">0</strong></div><div class="stat"><span id="relationshipLabel">함께한 날</span><strong id="relationshipDays">—</strong></div></div>
+    <div id="upcomingDays" class="upcoming-days hidden" aria-label="다가오는 날"></div>
     <div id="todayMemories" class="info-card today-memories hidden"></div>
     <div class="searchbar"><input class="search" id="searchAll" placeholder="기억, 장소, 태그를 검색해 보세요…"><select class="filter" id="filterType"><option value="all">모든 종류</option><option value="diary">일기 / 추억</option><option value="photo">사진 · 동영상</option><option value="person">그 사람에 대해</option><option value="place">장소와 음식</option><option value="item">소유물</option></select><input type="date" class="filter" id="filterDate" aria-label="날짜 필터"></div>
     <div class="section-head"><h3>기록 타임라인</h3><span id="resultCount">0개의 기록</span></div><div class="record-list" id="timeline"></div>
@@ -154,13 +172,13 @@
   <section id="view-tags" class="hidden"><div class="section-head"><h3>태그로 기억 찾기</h3><span>태그를 누르면 관련 기록을 모아봐요</span></div><div id="tagCloud" class="tags" style="gap:9px"></div><div class="section-head"><h3 id="tagResultTitle">모든 태그</h3></div><div class="record-list" id="tagResults"></div></section>
   <section id="view-updates" class="hidden">
     <div class="info-card" style="margin-bottom:12px"><div class="meta">NFA · CHANGELOG</div><h4>업데이트 로그</h4><p>사이트에 추가되거나 개선된 기능을 기록해 두는 곳이에요.</p></div>
-    <div class="info-card" style="margin-bottom:10px"><div class="meta">2026.11.02 · 분류</div><h4>오늘의 기억</h4><p>전체 기록 화면에서 예전 같은 날(월·일이 같은 날)에 남긴 기록을 ‘N년 전 오늘’로 모아 보여줘요. 그 사람에 대해 적은 정보와 우리 집은 제외하고, 해당하는 기록이 없으면 보이지 않아요.</p></div><div class="info-card" style="margin-bottom:10px"><div class="meta">2026.11.01 · 장소 지도</div><h4>함께한 장소 지도</h4><p>장소 기록에 유형, 주소, 좌표를 추가하고 지도에서 위치를 선택할 수 있도록 개선했어요. ‘우리 집’은 방문 장소와 구분되는 집 모양 표식으로 표시됩니다. 지도에는 좌표가 등록된 장소만 나타나요.</p></div><div class="info-card" style="margin-bottom:10px"><div class="meta">2026.10.27 · 기록 입력</div><h4>이전 카테고리 유지</h4><p>‘그 사람에 대해’에서 새 기록을 추가할 때 직전에 사용한 카테고리가 자동으로 선택되도록 개선했어요.</p></div>
+    <div class="info-card" style="margin-bottom:10px"><div class="meta">2026.11.02 · 분류</div><h4>기념일과 디데이</h4><p>백업과 설정에서 기념일을 등록하면 전체 기록 화면에 가까운 순으로 D-day가 보이고, 캘린더 날짜에도 표시돼요. 연애 시작일을 등록해 두면 다음 100일 단위와 주년도 자동으로 계산해 알려줘요. 음력은 지원하지 않아요. JSON 백업에도 포함되고, 복원할 때는 기존 기념일을 지우지 않고 없는 것만 추가해요.</p></div><div class="info-card" style="margin-bottom:10px"><div class="meta">2026.11.02 · 분류</div><h4>오늘의 기억</h4><p>전체 기록 화면에서 예전 같은 날(월·일이 같은 날)에 남긴 기록을 ‘N년 전 오늘’로 모아 보여줘요. 그 사람에 대해 적은 정보와 우리 집은 제외하고, 해당하는 기록이 없으면 보이지 않아요.</p></div><div class="info-card" style="margin-bottom:10px"><div class="meta">2026.11.01 · 장소 지도</div><h4>함께한 장소 지도</h4><p>장소 기록에 유형, 주소, 좌표를 추가하고 지도에서 위치를 선택할 수 있도록 개선했어요. ‘우리 집’은 방문 장소와 구분되는 집 모양 표식으로 표시됩니다. 지도에는 좌표가 등록된 장소만 나타나요.</p></div><div class="info-card" style="margin-bottom:10px"><div class="meta">2026.10.27 · 기록 입력</div><h4>이전 카테고리 유지</h4><p>‘그 사람에 대해’에서 새 기록을 추가할 때 직전에 사용한 카테고리가 자동으로 선택되도록 개선했어요.</p></div>
     <div class="info-card" style="margin-bottom:10px"><div class="meta">2026.10.26 · 기록 관리</div><h4>캘린더 기능 추가</h4><p>날짜별 기록을 달력에서 확인하고, 원하는 날짜를 선택해 해당 일자의 기록을 살펴볼 수 있도록 했어요.</p></div>
     <div class="info-card" style="margin-bottom:10px"><div class="meta">2026.10.25 · 기록 입력</div><h4>‘그 사람에 대해’ 입력 항목 간소화</h4><p>기억할 내용과 분류, 기억의 확실성을 중심으로 입력하도록 정리했어요. 날짜는 자동으로 기록하고 입력 화면에서는 숨겨요.</p></div><div class="info-card" style="margin-bottom:10px"><div class="meta">2026.10.25 · UI</div><h4>업데이트 로그 메뉴 추가</h4><p>사이드 메뉴에서 업데이트 내역을 한곳에 모아 확인할 수 있도록 했어요.</p></div>
     <div class="info-card" style="margin-bottom:10px"><div class="meta">2026.10.24 · 기록 관리</div><h4>‘그 사람에 대해’ 보기 개선</h4><p>전체 타임라인과 카테고리별 보기를 추가하고, 카테고리를 직접 관리할 수 있도록 했어요.</p></div>
     <div class="info-card" style="margin-bottom:10px"><div class="meta">2026.10.24 · 백업</div><h4>기록 내보내기 기능 정리</h4><p>JSON 백업과 복원, CSV 내보내기, PDF 기록집 만들기 기능을 백업과 설정 메뉴에서 이용할 수 있어요.</p></div>
   </section>
-  <section id="view-settings" class="hidden"><div class="info-card"><h4>헤더 문구</h4><p>사이트 상단에 나만의 문구를 표시할 수 있어요. 비워 두면 문구가 표시되지 않습니다.</p><div class="field" style="max-width:560px;margin-top:16px"><label for="headerPhrase">내가 정한 문구</label><input id="headerPhrase" type="text" maxlength="120" placeholder="예: 우리가 함께한 순간들을 잊지 않도록"><span class="hint">최대 120자 · 헤더의 NFA 옆에 표시돼요.</span></div><button class="btn primary" id="saveSettings" style="margin-top:14px">설정 저장</button></div><div class="info-card" style="margin-top:12px"><h4>우리의 시작</h4><p>연애를 시작한 날짜를 등록해 두면 메인 화면에서 함께한 날을 확인할 수 있어요.</p><div class="field" style="max-width:360px;margin-top:16px"><label for="relationshipStart">연애 시작일</label><input id="relationshipStart" type="date"><span class="hint">날짜는 언제든 수정할 수 있어요.</span></div></div><div class="info-card" style="margin-top:12px"><h4>기록 내보내기와 보관</h4><p>JSON은 기록을 복원하기 위한 백업이고, CSV는 표 형태로 정리할 때 유용해요. PDF는 읽고 간직하기 위한 기록집으로 저장할 수 있어요.</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px"><button class="btn primary" id="exportPdf">PDF 기록집 만들기</button><button class="btn" id="exportBtn">JSON 백업 내보내기</button><button class="btn" id="importBtn">백업 복원</button><input type="file" id="importFile" accept=".json,application/json" hidden><button class="btn" id="exportHtml">기록 목록 CSV 저장</button></div><p class="hint" style="margin-top:12px">PDF 버튼을 누른 뒤 인쇄 창에서 ‘PDF로 저장’을 선택해 주세요.</p></div><div class="info-card" style="margin-top:12px"><h4>개인정보와 사진</h4><p>기록과 사진은 비공개 서버에 저장돼요. 소중한 기록은 정기적으로 JSON 백업과 서버 백업을 함께 보관해 주세요.</p></div><div class="info-card" style="margin-top:12px"><h4>모든 기록 삭제</h4><p>삭제한 기록은 복구할 수 없어요. 먼저 백업 파일을 내려받는 것을 추천해요.</p><button class="btn danger" id="clearAll" style="margin-top:12px">전체 기록 삭제</button></div></section>
+  <section id="view-settings" class="hidden"><div class="info-card"><h4>헤더 문구</h4><p>사이트 상단에 나만의 문구를 표시할 수 있어요. 비워 두면 문구가 표시되지 않습니다.</p><div class="field" style="max-width:560px;margin-top:16px"><label for="headerPhrase">내가 정한 문구</label><input id="headerPhrase" type="text" maxlength="120" placeholder="예: 우리가 함께한 순간들을 잊지 않도록"><span class="hint">최대 120자 · 헤더의 NFA 옆에 표시돼요.</span></div><button class="btn primary" id="saveSettings" style="margin-top:14px">설정 저장</button></div><div class="info-card" style="margin-top:12px"><h4>우리의 시작</h4><p>연애를 시작한 날짜를 등록해 두면 메인 화면에서 함께한 날을 확인할 수 있어요.</p><div class="field" style="max-width:360px;margin-top:16px"><label for="relationshipStart">연애 시작일</label><input id="relationshipStart" type="date"><span class="hint">날짜는 언제든 수정할 수 있어요.</span></div></div><div class="info-card" style="margin-top:12px"><h4>기념일</h4><p>생일이나 여행처럼 기억하고 싶은 날을 등록해 두면 전체 기록 화면에서 D-day로 알려주고 캘린더에도 표시해요. 100일 단위와 주년은 연애 시작일로 자동 계산되니 따로 등록하지 않아도 돼요.</p><div class="anniversary-form"><div class="field"><label for="anniversaryName">이름</label><input id="anniversaryName" maxlength="50" placeholder="예: 첫 여행"></div><div class="field"><label for="anniversaryDate">날짜</label><input id="anniversaryDate" type="date"></div><div class="field"><label class="check-row" for="anniversaryRepeat"><input type="checkbox" id="anniversaryRepeat" checked> 매년 반복</label></div><button class="btn primary" id="addAnniversaryBtn" type="button">추가</button></div><span class="hint">음력은 지원하지 않아요. 양력 날짜로 등록해 주세요.</span><div id="anniversaryList" class="category-manager-list"></div></div><div class="info-card" style="margin-top:12px"><h4>기록 내보내기와 보관</h4><p>JSON은 기록을 복원하기 위한 백업이고, CSV는 표 형태로 정리할 때 유용해요. PDF는 읽고 간직하기 위한 기록집으로 저장할 수 있어요.</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px"><button class="btn primary" id="exportPdf">PDF 기록집 만들기</button><button class="btn" id="exportBtn">JSON 백업 내보내기</button><button class="btn" id="importBtn">백업 복원</button><input type="file" id="importFile" accept=".json,application/json" hidden><button class="btn" id="exportHtml">기록 목록 CSV 저장</button></div><p class="hint" style="margin-top:12px">PDF 버튼을 누른 뒤 인쇄 창에서 ‘PDF로 저장’을 선택해 주세요.</p></div><div class="info-card" style="margin-top:12px"><h4>개인정보와 사진</h4><p>기록과 사진은 비공개 서버에 저장돼요. 소중한 기록은 정기적으로 JSON 백업과 서버 백업을 함께 보관해 주세요.</p></div><div class="info-card" style="margin-top:12px"><h4>모든 기록 삭제</h4><p>삭제한 기록은 복구할 수 없어요. 먼저 백업 파일을 내려받는 것을 추천해요.</p><button class="btn danger" id="clearAll" style="margin-top:12px">전체 기록 삭제</button></div></section>
   <div class="footer-note">PRIVATE BY DESIGN · 기록은 소중하니까, 가끔 백업해 주세요.</div>
 </main></div>
 <div class="modal-backdrop hidden" id="modalBackdrop" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
@@ -246,6 +264,62 @@ function memoriesOn(list,today){
     return d[2]===md||(leapFallback&&d[2]==='02-29');
   }).map(r=>({record:r,years:ty-Number(r.date.slice(0,4))})).sort((a,b)=>a.years-b.years||b.record.date.localeCompare(a.record.date)||(b.record.createdAt||0)-(a.record.createdAt||0));
 }
+const ymdStr=(y,m,d)=>`${String(y).padStart(4,'0')}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+// 실제 있는 날짜일 때만 [년,월,일], 아니면 null (Date.UTC 기준이라 시간대와 무관)
+function parseYmd(s){
+  const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(s||'');if(!m)return null;
+  const y=Number(m[1]),mo=Number(m[2]),d=Number(m[3]),t=new Date(Date.UTC(y,mo-1,d));
+  return t.getUTCFullYear()===y&&t.getUTCMonth()===mo-1&&t.getUTCDate()===d?[y,mo,d]:null;
+}
+// 로컬 달력 기준 일수 차(to-from). Date.UTC로 자정끼리 비교해 서머타임에도 어긋나지 않는다. 잘못된 날짜면 NaN.
+function daysBetween(fromStr,toStr){
+  const a=parseYmd(fromStr),b=parseYmd(toStr);if(!a||!b)return NaN;
+  return Math.round((Date.UTC(b[0],b[1]-1,b[2])-Date.UTC(a[0],a[1]-1,a[2]))/86400000);
+}
+function addDays(str,n){
+  const p=parseYmd(str);if(!p)return '';
+  const t=new Date(Date.UTC(p[0],p[1]-1,p[2]+n));return ymdStr(t.getUTCFullYear(),t.getUTCMonth()+1,t.getUTCDate());
+}
+// 월-일을 year년으로 옮긴 날짜. 02-29는 평년에 02-28.
+const occurrenceIn=(month,day,year)=>ymdStr(year,month,month===2&&day===29&&!isLeapYear(year)?28:day);
+// 반복이면 오늘(포함) 이후 가장 가까운 월-일, 비반복이면 원래 날짜. 반복도 처음 날짜보다 앞선 해로는 가지 않는다.
+function nextOccurrence(dateStr,repeatYearly,today){
+  const p=parseYmd(dateStr),t=parseYmd(today);if(!p||!t)return null;
+  if(!repeatYearly)return dateStr;
+  const year=Math.max(t[0],p[0]);let next=occurrenceIn(p[1],p[2],year);
+  if(next<today)next=occurrenceIn(p[1],p[2],year+1);
+  return next;
+}
+// 연애 시작일에서 계산만 하는(저장 안 하는) 다음 100일 단위와 다음 주년. 시작일이 1일째라 N일 = 시작일+(N-1)일.
+function relationshipMilestones(start,today){
+  const s=parseYmd(start),t=parseYmd(today);if(!s||!t)return [];
+  const elapsed=daysBetween(start,today)+1;if(elapsed<1)return [];
+  const n=Math.ceil(elapsed/100)*100;
+  const out=[{name:`함께한 ${n}일`,date:addDays(start,n-1),auto:true}];
+  let k=Math.max(1,t[0]-s[0]),ann=occurrenceIn(s[1],s[2],s[0]+k);
+  while(ann<today){k++;ann=occurrenceIn(s[1],s[2],s[0]+k)}
+  out.push({name:`${k}주년`,date:ann,auto:true});
+  return out;
+}
+// 저장된 기념일 + 자동 계산 항목을 가까운 순으로. 지난 비반복 기념일은 뺀다. 반환: [{id?,name,date,days,auto}]
+function upcomingDays(anniversaries,start,today){
+  const items=[];
+  (Array.isArray(anniversaries)?anniversaries:[]).forEach(a=>{
+    const date=nextOccurrence(a.date,!!a.repeatYearly,today);if(!date||date<today)return;
+    items.push({id:a.id,name:a.name,date,days:daysBetween(today,date),auto:false});
+  });
+  relationshipMilestones(start,today).forEach(m=>items.push({name:m.name,date:m.date,days:daysBetween(today,m.date),auto:true}));
+  return items.sort((x,y)=>x.days-y.days);
+}
+// 그 날짜(key)에 해당하는 저장된 기념일. 반복은 key의 연도로 옮겨 비교한다(캘린더용).
+function anniversariesOn(list,key){
+  const k=parseYmd(key);if(!k||!Array.isArray(list))return [];
+  return list.filter(a=>{
+    const o=parseYmd(a.date);if(!o)return false;
+    return a.repeatYearly?k[0]>=o[0]&&occurrenceIn(o[1],o[2],k[0])===key:a.date===key;
+  });
+}
+const dDayLabel=days=>days===0?'D-DAY':days>0?`D-${days}`:`D+${-days}`;
 let lastPersonCategory='';
 let records=[];let calendarMonth=new Date(new Date().getFullYear(),new Date().getMonth(),1);let calendarSelectedDate=localDate();let editingId=null;let activeView='all';let activeTag='';let archiveSettings={relationshipStart:'',headerPhrase:''};let categories=[];let personMode='timeline';
 const $=s=>document.querySelector(s);
@@ -358,16 +432,17 @@ function renderCalendar(){
     if(i<firstDay){day=prevDays-firstDay+i+1;outside=true;cellMonth=month-1;if(cellMonth<0){cellMonth=11;cellYear--}}
     else if(i>=firstDay+daysInMonth){day=i-(firstDay+daysInMonth)+1;outside=true;cellMonth=month+1;if(cellMonth>11){cellMonth=0;cellYear++}}
     else day=i-firstDay+1;
-    const key=dateKey(cellYear,cellMonth,day),items=records.filter(r=>r.date===key).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+    const key=dateKey(cellYear,cellMonth,day),items=records.filter(r=>r.date===key).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));const annivs=anniversariesOn(anniversaries,key);
     const selected=key===calendarSelectedDate,today=key===localDate();const count=counts.get(key)||0;
     const types=[...new Set(items.map(r=>r.type))].slice(0,4).map(type=>`<span class="day-dot ${['diary','photo','person','place'].includes(type)?type:''}" aria-hidden="true"></span>`).join('');
-    html+=`<button type="button" role="gridcell" aria-label="${key}, 기록 ${count}개" aria-pressed="${selected}" data-calendar-date="${key}" class="calendar-day${outside?' outside':''}${selected?' selected':''}${today?' today':''}"><span class="day-number">${day}</span>${count?`<span class="day-count">${count}개</span><span class="day-dots">${types}</span>`:''}</button>`;
+    html+=`<button type="button" role="gridcell" aria-label="${key}, 기록 ${count}개${annivs.length?', 기념일 '+esc(annivs.map(a=>a.name).join(', ')):''}" aria-pressed="${selected}" data-calendar-date="${key}" class="calendar-day${outside?' outside':''}${selected?' selected':''}${today?' today':''}"><span class="day-number">${day}</span>${annivs.slice(0,2).map(a=>`<span class="day-anniv" title="${esc(a.name)}">★ ${esc(a.name)}</span>`).join('')}${annivs.length>2?`<span class="day-anniv">+${annivs.length-2}</span>`:''}${count?`<span class="day-count">${count}개</span><span class="day-dots">${types}</span>`:''}</button>`;
   }
   grid.innerHTML=html;
   const selectedRecords=records.filter(r=>r.date===calendarSelectedDate).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
   $('#calendarSelectedLabel').textContent=calendarDateLabel(calendarSelectedDate);
-  $('#calendarSelectedCount').textContent=`이 날짜에 저장된 기록 ${selectedRecords.length}개`;
-  $('#calendarRecords').innerHTML=selectedRecords.length?selectedRecords.map(r=>`<article class="calendar-record"><div class="calendar-record-meta">${esc(TYPE_LABELS[r.type]||'기록')}${r.category?' · '+esc(r.category):''}</div><div class="calendar-record-main" role="button" tabindex="0" data-detail="${esc(r.id)}"><div class="calendar-record-type">${esc(TYPE_LABELS[r.type]||'기록')}</div><strong>${esc(r.title)}</strong><p>${esc((r.body||'').replace(/\s+/g,' ').trim()||r.place||'내용을 보려면 기록을 선택하세요.')}</p></div><div class="calendar-record-actions"><button type="button" class="iconbtn" data-edit="${esc(r.id)}" aria-label="${esc(r.title)} 수정">✎</button><button type="button" class="iconbtn" data-delete="${esc(r.id)}" aria-label="${esc(r.title)} 삭제">×</button></div></article>`).join(''):emptyHtml('이 날짜에는 아직 기록이 없어요','기억하고 싶은 순간이 있다면 여기서 바로 남겨보세요.');
+  const selAnnivs=anniversariesOn(anniversaries,calendarSelectedDate);
+  $('#calendarSelectedCount').textContent=`이 날짜에 저장된 기록 ${selectedRecords.length}개${selAnnivs.length?` · 기념일 ${selAnnivs.length}개`:''}`;
+  $('#calendarRecords').innerHTML=(selAnnivs.length?`<div class="calendar-anniversaries">${selAnnivs.map(a=>`<div class="calendar-anniversary">★ ${esc(a.name)}<small>${a.repeatYearly?'매년 반복':'한 번'}</small></div>`).join('')}</div>`:'')+(selectedRecords.length?selectedRecords.map(r=>`<article class="calendar-record"><div class="calendar-record-meta">${esc(TYPE_LABELS[r.type]||'기록')}${r.category?' · '+esc(r.category):''}</div><div class="calendar-record-main" role="button" tabindex="0" data-detail="${esc(r.id)}"><div class="calendar-record-type">${esc(TYPE_LABELS[r.type]||'기록')}</div><strong>${esc(r.title)}</strong><p>${esc((r.body||'').replace(/\s+/g,' ').trim()||r.place||'내용을 보려면 기록을 선택하세요.')}</p></div><div class="calendar-record-actions"><button type="button" class="iconbtn" data-edit="${esc(r.id)}" aria-label="${esc(r.title)} 수정">✎</button><button type="button" class="iconbtn" data-delete="${esc(r.id)}" aria-label="${esc(r.title)} 삭제">×</button></div></article>`).join(''):emptyHtml('이 날짜에는 아직 기록이 없어요','기억하고 싶은 순간이 있다면 여기서 바로 남겨보세요.'));
 }
 
 
@@ -785,6 +860,92 @@ $('#placeGoHome').addEventListener('click',()=>{
   selectPlace(h.id,{pan:false,scroll:true});
 });
 
+// ---- 기념일 (기록 저장과 별개: /api/anniversaries로 바로 저장하므로 persist를 쓰지 않는다) ----
+let anniversaries=[];
+let anniversariesLoaded=false;
+function applyAnniversaries(data){
+  if(!data||!Array.isArray(data.anniversaries)){anniversariesLoaded=false;renderAnniversaryUi();return false}
+  anniversaries=data.anniversaries.filter(a=>a&&Number.isInteger(a.id)&&typeof a.name==='string'&&parseYmd(a.date)).map(a=>({id:a.id,name:a.name,date:a.date,repeatYearly:a.repeatYearly!==false}));
+  anniversariesLoaded=true;
+  renderAnniversaryUi();
+  return true;
+}
+// 실패해도 앱 전체를 막지 않고 안내만 한다(기록 로드와 별개).
+async function loadAnniversaries(){
+  try{applyAnniversaries(await api('/anniversaries'))}
+  catch(e){console.error('[기념일] 불러오기 실패:',e);if(!String(e.message).includes('로그인이 필요'))toast('기념일을 불러오지 못했어요. 기록은 그대로 쓸 수 있어요.')}
+}
+function renderAnniversaryUi(){renderAnniversaryList();renderUpcomingDays();if(recordsLoaded)renderCalendar()}
+function renderAnniversaryList(){
+  const list=$('#anniversaryList');if(!list)return;
+  if(!anniversariesLoaded){list.innerHTML='<span class="hint">기념일을 불러오지 못했어요. 새로고침 후 다시 시도해 주세요.</span>';return}
+  // D-day는 반복이면 다음 날짜 기준, 지난 비반복은 D+N. 다가오는 순 다음에 지난 것(최근 순).
+  const today=localDate();
+  const rows=anniversaries.map(a=>({a,days:daysBetween(today,nextOccurrence(a.date,a.repeatYearly,today))}));
+  rows.sort((x,y)=>(x.days>=0)!==(y.days>=0)?(x.days>=0?-1:1):(x.days>=0?x.days-y.days:y.days-x.days));
+  list.innerHTML=rows.map(({a,days})=>`<div class="anniv-row" data-anniv-row="${a.id}"><input aria-label="기념일 이름" maxlength="50" value="${esc(a.name)}"><input type="date" aria-label="기념일 날짜" value="${esc(a.date)}"><label class="anniv-repeat"><input type="checkbox" aria-label="매년 반복"${a.repeatYearly?' checked':''}> 매년</label><span class="anniv-dday">${dDayLabel(days)}</span><div style="display:flex;gap:5px"><button type="button" class="btn" data-anniv-save="${a.id}">저장</button><button type="button" class="btn danger" data-anniv-delete="${a.id}">삭제</button></div></div>`).join('')||'<span class="hint">아직 등록한 기념일이 없어요.</span>';
+}
+// 전체 기록 화면의 다가오는 날 띠: 가까운 순 최대 4개, 없으면 숨김
+function renderUpcomingDays(){
+  const box=$('#upcomingDays');if(!box)return;
+  const items=upcomingDays(anniversaries,archiveSettings.relationshipStart,localDate()).slice(0,4);
+  if(!items.length){box.classList.add('hidden');box.innerHTML='';return}
+  box.innerHTML=items.map(i=>`<div class="upcoming-chip${i.days===0?' is-today':''}" title="${esc(i.date)}"><span>${esc(i.name)}</span><strong>${dDayLabel(i.days)}</strong></div>`).join('');
+  box.classList.remove('hidden');
+}
+async function addAnniversary(){
+  const nameEl=$('#anniversaryName'),dateEl=$('#anniversaryDate');const name=nameEl.value.trim(),date=dateEl.value;
+  if(!name){toast('기념일 이름을 입력해 주세요.');return}
+  if(!date){toast('기념일 날짜를 선택해 주세요.');return}
+  if(!anniversariesLoaded){toast('기념일을 아직 불러오지 못했어요. 잠시 후 다시 시도해 주세요.');await loadAnniversaries();return}
+  try{
+    const a=await api('/anniversaries',{method:'POST',body:JSON.stringify({name,date,repeatYearly:$('#anniversaryRepeat').checked})});
+    anniversaries=[...anniversaries,{id:a.id,name:a.name,date:a.date,repeatYearly:a.repeatYearly}];
+    nameEl.value='';dateEl.value='';$('#anniversaryRepeat').checked=true;
+    renderAnniversaryUi();toast('기념일을 추가했어요.');
+  }catch(err){toast(err.message)}
+}
+$('#addAnniversaryBtn').addEventListener('click',addAnniversary);
+$('#anniversaryName').addEventListener('keydown',e=>{if(e.key!=='Enter'||e.isComposing)return;e.preventDefault();addAnniversary()});
+$('#anniversaryList').addEventListener('click',async e=>{
+  const save=e.target.closest('[data-anniv-save]');
+  if(save){
+    const id=Number(save.dataset.annivSave);const row=save.closest('[data-anniv-row]');
+    const name=row.querySelector('input:not([type=date]):not([type=checkbox])').value.trim(),date=row.querySelector('input[type=date]').value;
+    if(!name){toast('기념일 이름을 입력해 주세요.');return}
+    if(!date){toast('기념일 날짜를 선택해 주세요.');return}
+    try{
+      const a=await api('/anniversaries/'+id,{method:'PUT',body:JSON.stringify({name,date,repeatYearly:row.querySelector('input[type=checkbox]').checked})});
+      anniversaries=anniversaries.map(x=>x.id===id?{id,name:a.name,date:a.date,repeatYearly:a.repeatYearly}:x);
+      renderAnniversaryUi();toast('기념일을 수정했어요.');
+    }catch(err){toast(err.message)}
+    return;
+  }
+  const del=e.target.closest('[data-anniv-delete]');
+  if(del){
+    const id=Number(del.dataset.annivDelete);const a=anniversaries.find(x=>x.id===id);if(!a)return;
+    if(!confirm(`‘${a.name}’ 기념일을 삭제할까요?`))return;
+    try{await api('/anniversaries/'+id,{method:'DELETE'});anniversaries=anniversaries.filter(x=>x.id!==id);renderAnniversaryUi();toast('기념일을 삭제했어요.')}
+    catch(err){toast(err.message)}
+  }
+});
+// 백업 복원: 이름+날짜가 같은 것은 건너뛰고 나머지만 추가한다(기존 기념일은 지우지 않음). 반환: {added,skipped}
+async function importAnniversaries(list){
+  const result={added:0,skipped:0};
+  if(!Array.isArray(list)||!list.length)return result;
+  if(!anniversariesLoaded)await loadAnniversaries();
+  if(!anniversariesLoaded)throw new Error('기념일을 불러오지 못했어요.');
+  for(const item of list){
+    const name=String(item?.name??'').trim(),date=String(item?.date??'').trim();
+    if(!name||!parseYmd(date)||anniversaries.some(x=>x.name===name&&x.date===date)){result.skipped++;continue}
+    try{
+      const a=await api('/anniversaries',{method:'POST',body:JSON.stringify({name,date,repeatYearly:typeof item.repeatYearly==='boolean'?item.repeatYearly:true})});
+      anniversaries=[...anniversaries,{id:a.id,name:a.name,date:a.date,repeatYearly:a.repeatYearly}];result.added++;
+    }catch(err){if(String(err.message).includes('로그인이 필요'))throw err;result.skipped++}
+  }
+  renderAnniversaryUi();
+  return result;
+}
 function renderTodayMemories(){
   const box=$('#todayMemories');if(!box)return;
   const found=memoriesOn(records,localDate());
@@ -801,12 +962,12 @@ document.addEventListener('keydown',e=>{
 function render(){const list=filteredRecords();$('#statRecords').textContent=records.length;$('#statPhotos').textContent=records.filter(r=>r.type==='photo'&&mediaItems(r).length).length;const start=archiveSettings.relationshipStart;const dayCount=start?Math.floor((new Date(localDate()+'T00:00:00')-new Date(start+'T00:00:00'))/86400000)+1:0;$('#relationshipDays').textContent=dayCount>0?dayCount.toLocaleString('ko-KR')+'일':'—';$('#relationshipLabel').textContent=start?'함께한 날':'연애 시작일 미등록';$('#resultCount').textContent=`${list.length}개의 기록`;$('#timeline').innerHTML=list.length?list.map(recordHtml).join(''):emptyHtml('아직 기록이 없어요','첫 번째 기억을 천천히 남겨보세요.');const photos=records.filter(r=>r.type==='photo'&&mediaItems(r).length&&(!$('#searchPhotos').value||searchText(r).includes($('#searchPhotos').value.toLowerCase()))&&(!$('#photoDate').value||r.date===$('#photoDate').value)).sort((a,b)=>(b.date||'').localeCompare(a.date||''));$('#photoCount').textContent=`사진 · 동영상 ${photos.length}개 기록`;$('#photoGrid').innerHTML=photos.length?photos.map(r=>{const first=mediaItems(r)[0];return `<article class="photo-card">${first.mediaType==='video'?`<video src="${esc(first.url)}" controls preload="metadata" playsinline aria-label="${esc(r.title)}"></video>`:`<img data-detail="${esc(r.id)}" src="${esc(first.url)}" alt="${esc(r.title)}" loading="lazy">`}${mediaItems(r).length>1?`<span class="media-count">+${mediaItems(r).length-1}개 미디어</span>`:''}<div class="photo-info"><strong data-detail="${esc(r.id)}">${esc(r.title)}</strong><small>${esc(r.date)}${r.place?' · '+esc(r.place):''}</small><div class="tags">${tagHtml(r)}</div></div><div class="photo-tools"><button class="iconbtn" data-edit="${esc(r.id)}">수정</button><button class="iconbtn" data-delete="${esc(r.id)}">삭제</button></div></article>`}).join(''):emptyHtml('사진이나 동영상이 아직 없어요','미디어를 올리고 그날의 이야기를 덧붙여 보세요.');const places=records.filter(r=>r.type==='place');
 renderPlaceList();
 renderPlacesMap();
-renderCategoryOptions();renderPersonView();renderCalendar();renderItemsView();renderTodayMemories();}
+renderCategoryOptions();renderPersonView();renderCalendar();renderItemsView();renderUpcomingDays();renderTodayMemories();}
 const views={all:['전체 기록','함께한 순간과 그 사람에 대해 알게 된 것들을 모아두는 곳.'],calendar:['캘린더','날짜별로 기록을 모아보고, 그날의 기억을 다시 꺼내봐요.'],photos:['미디어','사진과 동영상을 모아보고, 각 미디어에 담긴 이야기를 확인해요.'],items:['소유물','편지와 선물, 커플템처럼 추억이 담긴 물건을 이미지로 모아봐요.'],person:['그 사람에 대해','좋아하는 것, 싫어하는 것 등 알아가는 과정을 기록해보세요.'],places:['장소와 음식','함께한 장소와 먹었던 음식, 다시 가고 싶은 곳.'],tags:['태그 모아보기','하나의 태그로 여러 날의 기억을 한 번에 찾아봐요.'],updates:['업데이트 로그','사이트에 추가되거나 개선된 기능을 확인해요.'],settings:['백업과 설정','소중한 기록을 내보내고 안전하게 보관해요.']};
 function applyHeaderPhrase(){const phrase=(archiveSettings.headerPhrase||'').trim();$('#headerCustomPhrase').textContent=phrase;$('#headerPhrase').value=archiveSettings.headerPhrase||''}
 function setSidebarCollapsed(collapsed){const app=$('#archiveApp');app.classList.toggle('sidebar-collapsed',collapsed);const toggle=$('#sidebarToggle');toggle.setAttribute('aria-expanded',String(!collapsed));toggle.setAttribute('aria-label',collapsed?'사이드바 펼치기':'사이드바 접기');toggle.title=collapsed?'사이드바 펼치기':'사이드바 접기';toggle.textContent=collapsed?'☰':'×'}
 $('#sidebarToggle').addEventListener('click',()=>setSidebarCollapsed(!$('#archiveApp').classList.contains('sidebar-collapsed')));$('#sidebarBackdrop').addEventListener('click',()=>setSidebarCollapsed(true));
-function switchView(v){if(v==='calendar')renderCalendar();if(window.matchMedia('(max-width: 650px)').matches)setSidebarCollapsed(true);activeView=v;document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===v));Object.keys(views).forEach(k=>$('#view-'+k).classList.toggle('hidden',k!==v));$('#pageTitle').textContent=views[v][0];$('#pageSub').textContent=views[v][1];$('#eyebrow').textContent=v==='settings'?'DATA & PRIVACY':'YOUR PRIVATE ARCHIVE';$('#addRecord').textContent=v==='photos'?'＋ 미디어 추가':v==='items'?'＋ 소유물 추가':v==='person'?'＋ 정보 추가':v==='places'?'＋ 장소 추가':'＋ 기록 추가';if(v==='person')renderPersonView();if(v==='places')setTimeout(()=>{renderPlacesMap();if(placeMapInstance)placeMapInstance.invalidateSize()},150);}
+function switchView(v){if(v==='calendar')renderCalendar();if(window.matchMedia('(max-width: 650px)').matches)setSidebarCollapsed(true);activeView=v;document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===v));Object.keys(views).forEach(k=>$('#view-'+k).classList.toggle('hidden',k!==v));$('#pageTitle').textContent=views[v][0];$('#pageSub').textContent=views[v][1];$('#eyebrow').textContent=v==='settings'?'DATA & PRIVACY':'YOUR PRIVATE ARCHIVE';$('#addRecord').textContent=v==='photos'?'＋ 미디어 추가':v==='items'?'＋ 소유물 추가':v==='person'?'＋ 정보 추가':v==='places'?'＋ 장소 추가':'＋ 기록 추가';if(v==='person')renderPersonView();if(v==='settings')renderAnniversaryList();if(v==='places')setTimeout(()=>{renderPlacesMap();if(placeMapInstance)placeMapInstance.invalidateSize()},150);}
 async function uploadPhoto(file){if(!file)return null;const isVideo=file.type.startsWith('video/');if(!file.type.startsWith('image/')&&!isVideo)throw new Error('이미지 또는 동영상 파일만 올릴 수 있어요.');const limit=isVideo?200*1024*1024:15*1024*1024;if(file.size>limit)throw new Error(isVideo?'동영상은 200MB 이하로 올려주세요.':'사진은 15MB 이하로 올려주세요.');const fd=new FormData();fd.append('file',file);const out=await api('/photos',{method:'POST',body:fd});return {url:out.url,mediaType:isVideo?'video':'image'}}
 $('#recordForm').addEventListener('submit',async e=>{e.preventDefault();if(!ensureLoaded())return;const t=$('#type').value;const files=[...$('#photoFile').files];const title=$('#title').value.trim();if(!title){toast('제목을 적어주세요.');return}const old=records.find(x=>x.id===editingId);const latText=$('#placeLat').value.trim();const lngText=$('#placeLng').value.trim();if(t==='place'&&(!!latText!==!!lngText)){toast('위도와 경도를 모두 입력하거나 둘 다 비워 주세요.');return}if(t==='place'&&latText&&(!Number.isFinite(Number(latText))||!Number.isFinite(Number(lngText))||Number(latText)<-90||Number(latText)>90||Number(lngText)<-180||Number(lngText)>180)){toast('위도 또는 경도 범위를 확인해 주세요.');return}const existingImages=mediaItems(old||{});if((t==='photo'||t==='item')&&!existingImages.length&&!files.length){toast('사진 또는 동영상 파일을 선택해 주세요.');return}let images=existingImages.map(m=>({url:m.url,mediaType:m.mediaType||'image'}));try{for(let i=0;i<files.length;i++){toast(files.length>1?`미디어 업로드 중… (${i+1}/${files.length})`:'미디어 업로드 중…');images.push(await uploadPhoto(files[i]));}}catch(err){toast(err.message);return}const primary=images[0]||null;const r={id:editingId||crypto.randomUUID?.()||String(Date.now()),type:t,date:t==='person'?(old?.date||localDate()):$('#date').value,title,body:$('#body').value.trim(),category:t==='place'?(old?(old.category||''):$('#category').value):$('#category').value,itemKind:t==='item'?$('#itemKind').value:(old?.itemKind||''),giver:t==='item'?$('#giver').value.trim():(old?.giver||''),certainty:$('#certainty').value,tags:t==='person'?(old?.tags||[]):normalizedTags($('#tags').value),place:t==='person'?(old?.place||''):$('#place').value.trim(),placeKind:t==='place'?($('#placeKind').checked?'home':'visit'):(old?.placeKind||'visit'),placeCategoryId:placeCategoryIdToSave(t,old),address:t==='place'?$('#address').value.trim():(old?.address||''),latitude:t==='place'?(latText?Number(latText):null):(old?.latitude??null),longitude:t==='place'?(lngText?Number(lngText):null):(old?.longitude??null),images,image:primary?.url||null,mediaType:primary?.mediaType||null,createdAt:old?.createdAt||Date.now(),updatedAt:Date.now()};if(t==='person')lastPersonCategory=r.category;if(!r.title){toast('제목을 적어주세요.');return}if((t==='photo'||t==='item')&&!r.images.length){toast('사진 또는 동영상 파일을 선택해 주세요.');return}let demotedHome=false;if(t==='place'&&r.placeKind==='home'){const now=Date.now();records=records.map(x=>x.type==='place'&&x.placeKind==='home'&&x.id!==r.id?(demotedHome=true,{...x,placeKind:'visit',updatedAt:now}):x)}if(old)records=records.map(x=>x.id===old.id?r:x);else records.push(r);if(t==='place')pendingPlaceCoords=null;const placeMoved=t==='place'&&(!old||old.type!=='place'||(old.latitude??null)!==r.latitude||(old.longitude??null)!==r.longitude||old.placeKind!==r.placeKind||(old.placeCategoryId??null)!==(r.placeCategoryId??null));closeModal();closeDetailModal();render();if(placeMoved)focusSavedPlace(r.id);await persist();toast(demotedHome?`우리 집을 ${r.title}${josaRo(r.title)} 바꿨어요.`:(old?'기록을 수정했어요.':'기록을 저장했어요.'));});
 async function deleteRecord(id){if(!ensureLoaded())return;const r=records.find(x=>x.id===id);if(!r||!confirm(`“${r.title}” 기록을 삭제할까요?`))return;records=records.filter(x=>x.id!==id);render();await persist();toast('기록을 삭제했어요.')}
@@ -830,14 +991,14 @@ $('#logoutBtn').addEventListener('click',async()=>{try{await api('/logout',{meth
 $('#addRecord').addEventListener('click',()=>openModal(activeView==='photos'?'photo':activeView==='items'?'item':activeView==='person'?'person':activeView==='places'?'place':'diary'));$('#quickPhoto').addEventListener('click',()=>openModal('photo'));$('#type').addEventListener('change',updateFormFields);$('#closeModal').addEventListener('click',closeModal);$('#cancelModal').addEventListener('click',closeModal);$('#modalBackdrop').addEventListener('click',e=>{if(e.target===$('#modalBackdrop'))closeModal()});$('#closeDetail').addEventListener('click',closeDetailModal);$('#detailCloseBtn').addEventListener('click',closeDetailModal);$('#detailBackdrop').addEventListener('click',e=>{if(e.target===$('#detailBackdrop'))closeDetailModal()});['searchAll','filterType','filterDate','searchPhotos','photoDate','searchItems'].forEach(id=>$('#'+id).addEventListener('input',render));
 $("#itemCategoryFilter").addEventListener("change",renderItemsView);
 function download(name,content,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
-$('#exportBtn').addEventListener('click',()=>download(`nfa-archive-${localDate()}.json`,JSON.stringify({schemaVersion:3,exportedAt:new Date().toISOString(),settings:archiveSettings,categories:categories.map(c=>({name:c.name,isDefault:!!c.isDefault})),records:records.map(r=>({...r,images:mediaItems(r)}))},null,2),'application/json'));
-$('#importBtn').addEventListener('click',()=>$('#importFile').click());$('#importFile').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;if(!ensureLoaded()){e.target.value='';return}try{const obj=JSON.parse(await f.text());const incoming=Array.isArray(obj)?obj:obj.records;if(!Array.isArray(incoming))throw new Error('기록 목록을 찾을 수 없어요.');if(!confirm(`${incoming.length}개 기록을 불러올까요? 기존 기록은 가져온 내용으로 교체돼요.`))return;if(Array.isArray(obj.categories)){for(const c of obj.categories){const name=String(c?.name||'').trim();if(name&&!categories.some(existing=>existing.name===name)){try{await api('/categories',{method:'POST',body:JSON.stringify({name})})}catch(err){if(!String(err.message).includes('이미 있는'))throw err}}}await loadCategories()}const migrated=[];for(let i=0;i<incoming.length;i++){const r={...incoming[i]};let media=mediaItems(r).map(m=>({...m}));for(let j=0;j<media.length;j++){if(typeof media[j].url==='string'&&media[j].url.startsWith('data:')){toast(`미디어를 서버로 옮기는 중… (${i+1}/${incoming.length}, ${j+1}/${media.length})`);const response=await fetch(media[j].url);const blob=await response.blob();const ext=blob.type==='video/mp4'?'mp4':blob.type==='video/quicktime'?'mov':blob.type==='video/webm'?'webm':blob.type==='image/png'?'png':blob.type==='image/webp'?'webp':'jpg';const file=new File([blob],`archive-import-${i+1}-${j+1}.${ext}`,{type:blob.type||'image/jpeg'});const uploaded=await uploadPhoto(file);media[j]=uploaded}}r.images=media;if(media.length){r.image=media[0].url;r.mediaType=media[0].mediaType||'image'}else{r.image=null;r.mediaType=null}migrated.push(r)}records=migrated;if(obj.settings&&(typeof obj.settings.relationshipStart==='string'||typeof obj.settings.headerPhrase==='string')){archiveSettings=await api('/settings',{method:'PUT',body:JSON.stringify({relationshipStart:obj.settings.relationshipStart||'',headerPhrase:obj.settings.headerPhrase||''})});$('#relationshipStart').value=archiveSettings.relationshipStart||'';applyHeaderPhrase()}render();await persist();toast('백업을 복원했어요.')}catch(err){alert('백업 파일을 읽지 못했어요: '+err.message)}finally{e.target.value=''}});
+$('#exportBtn').addEventListener('click',()=>download(`nfa-archive-${localDate()}.json`,JSON.stringify({schemaVersion:4,exportedAt:new Date().toISOString(),settings:archiveSettings,categories:categories.map(c=>({name:c.name,isDefault:!!c.isDefault})),anniversaries:anniversaries.map(a=>({name:a.name,date:a.date,repeatYearly:a.repeatYearly})),records:records.map(r=>({...r,images:mediaItems(r)}))},null,2),'application/json'));
+$('#importBtn').addEventListener('click',()=>$('#importFile').click());$('#importFile').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;if(!ensureLoaded()){e.target.value='';return}try{const obj=JSON.parse(await f.text());const incoming=Array.isArray(obj)?obj:obj.records;if(!Array.isArray(incoming))throw new Error('기록 목록을 찾을 수 없어요.');if(!confirm(`${incoming.length}개 기록을 불러올까요? 기존 기록은 가져온 내용으로 교체돼요.${Array.isArray(obj.anniversaries)&&obj.anniversaries.length?'\n기념일은 기존 것을 그대로 두고, 없는 것만 추가돼요.':''}`))return;if(Array.isArray(obj.categories)){for(const c of obj.categories){const name=String(c?.name||'').trim();if(name&&!categories.some(existing=>existing.name===name)){try{await api('/categories',{method:'POST',body:JSON.stringify({name})})}catch(err){if(!String(err.message).includes('이미 있는'))throw err}}}await loadCategories()}const migrated=[];for(let i=0;i<incoming.length;i++){const r={...incoming[i]};let media=mediaItems(r).map(m=>({...m}));for(let j=0;j<media.length;j++){if(typeof media[j].url==='string'&&media[j].url.startsWith('data:')){toast(`미디어를 서버로 옮기는 중… (${i+1}/${incoming.length}, ${j+1}/${media.length})`);const response=await fetch(media[j].url);const blob=await response.blob();const ext=blob.type==='video/mp4'?'mp4':blob.type==='video/quicktime'?'mov':blob.type==='video/webm'?'webm':blob.type==='image/png'?'png':blob.type==='image/webp'?'webp':'jpg';const file=new File([blob],`archive-import-${i+1}-${j+1}.${ext}`,{type:blob.type||'image/jpeg'});const uploaded=await uploadPhoto(file);media[j]=uploaded}}r.images=media;if(media.length){r.image=media[0].url;r.mediaType=media[0].mediaType||'image'}else{r.image=null;r.mediaType=null}migrated.push(r)}records=migrated;if(obj.settings&&(typeof obj.settings.relationshipStart==='string'||typeof obj.settings.headerPhrase==='string')){archiveSettings=await api('/settings',{method:'PUT',body:JSON.stringify({relationshipStart:obj.settings.relationshipStart||'',headerPhrase:obj.settings.headerPhrase||''})});$('#relationshipStart').value=archiveSettings.relationshipStart||'';applyHeaderPhrase()}render();await persist();let annivNote='';try{const ar=await importAnniversaries(obj.anniversaries);if(ar.added)annivNote=` 기념일 ${ar.added}개를 추가했어요.`+(ar.skipped?` (${ar.skipped}개는 건너뜀)`:'');else if(ar.skipped)annivNote=` 기념일 ${ar.skipped}개는 이미 있거나 건너뛰었어요.`}catch(err){annivNote=' 기념일은 복원하지 못했어요.'}toast('백업을 복원했어요.'+annivNote)}catch(err){alert('백업 파일을 읽지 못했어요: '+err.message)}finally{e.target.value=''}});
 $('#exportHtml').addEventListener('click',()=>{const rows=[['날짜','종류','제목','내용','장소','태그'],...records.map(r=>[r.date,TYPE_LABELS[r.type],r.title,r.body,r.place,tagsOf(r).join(', ')])];const csv=rows.map(row=>row.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\r\n');download(`our-archive-${localDate()}.csv`,'\ufeff'+csv,'text/csv;charset=utf-8')});
 $('#saveSettings').addEventListener('click',async()=>{const relationshipStart=$('#relationshipStart').value;const headerPhrase=$('#headerPhrase').value.trim();if(relationshipStart&&relationshipStart>localDate()){toast('연애 시작일은 오늘 이후로 설정할 수 없어요.');return}try{archiveSettings=await api('/settings',{method:'PUT',body:JSON.stringify({relationshipStart,headerPhrase})});$('#relationshipStart').value=archiveSettings.relationshipStart||'';applyHeaderPhrase();render();toast('설정을 저장했어요.')}catch(e){toast(e.message)}});
 function exportPdf(){const ordered=[...records].sort((a,b)=>(a.date||'').localeCompare(b.date||'')||(a.createdAt||0)-(b.createdAt||0));const start=archiveSettings.relationshipStart;const days=start?Math.floor((new Date(localDate()+'T00:00:00')-new Date(start+'T00:00:00'))/86400000)+1:0;const body=ordered.map(r=>`<article class="record"><div class="date">${esc(r.date||'날짜 없음')}</div><div class="kind">${esc(TYPE_LABELS[r.type]||'기록')}${r.category?' · '+esc(r.category):''}</div><h2>${esc(r.title)}</h2>${mediaItems(r).map(m=>m.mediaType!=='video'?`<img class="photo" src="${esc(m.url)}" alt="${esc(r.title)}">`:'<p class="place">동영상 첨부 · 웹사이트에서 재생할 수 있어요. (PDF에는 동영상 파일이 포함되지 않습니다.)</p>').join('')}<p>${esc(r.body||'').replace(/\n/g,'<br>')}</p>${r.place?`<p class="place">장소 · ${esc(r.place)}</p>`:''}${tagsOf(r).length?`<p class="tags">${tagsOf(r).map(t=>'#'+esc(t)).join('　')}</p>`:''}</article>`).join('');const html=`<!doctype html><html lang="ko"><head><meta charset="utf-8"><base href="${location.origin}/"><title>NFA — Never Fade Away</title><style>@page{size:A4;margin:18mm}*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;color:#26232c;line-height:1.65}.cover{min-height:70vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;page-break-after:always}.cover h1{font-size:54px;letter-spacing:.12em;margin:0}.cover .sub{font-size:12px;letter-spacing:.3em;color:#898392;margin-top:3px}.cover .tagline{margin-top:50px;color:#777;font-size:14px}.cover .meta{margin-top:12px;color:#777;font-size:12px}.record{padding:0 0 22px;margin:0 0 24px;border-bottom:1px solid #e5e1e9;break-inside:avoid}.date,.kind{font-size:10px;color:#7b718d;letter-spacing:.08em}.kind{margin-top:3px}.record h2{font-size:18px;margin:6px 0 8px}.record p{font-size:11px;white-space:normal;overflow-wrap:anywhere;margin:5px 0}.record .place,.record .tags{color:#716a7c;font-size:10px}.photo{max-width:100%;max-height:320px;object-fit:contain;display:block;margin:10px 0;border-radius:4px}.footer{margin-top:30px;text-align:center;font-size:9px;color:#999}@media screen{body{max-width:760px;margin:30px auto;padding:24px}.cover{min-height:400px}}</style></head><body><section class="cover"><h1>NFA</h1><div class="sub">Never Fade Away</div><div class="tagline">소중한 것은 사라지지 않도록.</div><div class="meta">${start?'우리의 시작 · '+esc(start):'우리의 기록'}${days>0?' · 함께한 '+days+'일째':''}</div><div class="meta">기록 ${ordered.length}개 · 내보낸 날짜 ${localDate()}</div></section>${body||'<p>아직 기록이 없습니다.</p>'}<div class="footer">NFA · Never Fade Away</div><script>window.addEventListener('load',()=>{const imgs=[...document.images];Promise.all(imgs.map(i=>i.complete?Promise.resolve():new Promise(r=>{i.onload=r;i.onerror=r}))).then(()=>setTimeout(()=>window.print(),350))})<\/script></body></html>`;const w=window.open('','_blank');if(!w){toast('팝업이 차단됐어요. 이 사이트의 팝업을 허용해 주세요.');return}w.document.open();w.document.write(html);w.document.close()}
 $('#exportPdf').addEventListener('click',exportPdf);
 $('#clearAll').addEventListener('click',()=>{if(!ensureLoaded())return;if(confirm('정말 모든 기록을 삭제할까요? 이 작업은 되돌릴 수 없어요.')){records=[];persist();render();toast('모든 기록을 삭제했어요.')}});
-async function initArchive(){try{const [data,settings,categoryData,placeCategoryData]=await Promise.all([api('/records'),api('/settings'),api('/categories'),api('/place-categories').catch(err=>{console.error('[장소 카테고리] 불러오기 실패:',err);return null})]);records=Array.isArray(data.records)?data.records:[];recordsLoaded=true;categories=Array.isArray(categoryData.categories)?categoryData.categories:[];archiveSettings=settings||{relationshipStart:'',headerPhrase:''};$('#relationshipStart').value=archiveSettings.relationshipStart||'';applyHeaderPhrase();renderCategoryOptions();renderCategoryManager();if(!applyPlaceCategories(placeCategoryData))toast('장소 카테고리를 불러오지 못했어요. 장소 기록은 그대로 쓸 수 있어요.');showApp();switchView('all');render();startServerStatusChecks()}catch(e){console.error('[NFA 진단] initArchive 실패:',e);if(!String(e.message).includes('로그인이 필요'))toast('서버 연결을 확인해 주세요. (진단 정보는 개발자 도구 Console에 표시됩니다.)')}}
+async function initArchive(){try{const [data,settings,categoryData,placeCategoryData,anniversaryData]=await Promise.all([api('/records'),api('/settings'),api('/categories'),api('/place-categories').catch(err=>{console.error('[장소 카테고리] 불러오기 실패:',err);return null}),api('/anniversaries').catch(err=>{console.error('[기념일] 불러오기 실패:',err);return null})]);records=Array.isArray(data.records)?data.records:[];recordsLoaded=true;categories=Array.isArray(categoryData.categories)?categoryData.categories:[];archiveSettings=settings||{relationshipStart:'',headerPhrase:''};$('#relationshipStart').value=archiveSettings.relationshipStart||'';applyHeaderPhrase();renderCategoryOptions();renderCategoryManager();if(!applyPlaceCategories(placeCategoryData))toast('장소 카테고리를 불러오지 못했어요. 장소 기록은 그대로 쓸 수 있어요.');if(!applyAnniversaries(anniversaryData))toast('기념일을 불러오지 못했어요. 기록은 그대로 쓸 수 있어요.');showApp();switchView('all');render();startServerStatusChecks()}catch(e){console.error('[NFA 진단] initArchive 실패:',e);if(!String(e.message).includes('로그인이 필요'))toast('서버 연결을 확인해 주세요. (진단 정보는 개발자 도구 Console에 표시됩니다.)')}}
 (async()=>{try{const s=await fetch(API+'/session',{credentials:'same-origin'});const d=await s.json();if(d.authenticated)await initArchive();else showLogin()}catch(e){showLogin();$('#loginError').textContent='서버에 연결할 수 없어요.'}})();
 
 document.addEventListener('click',e=>{const day=e.target.closest('[data-calendar-date]');if(day){calendarSelectedDate=day.dataset.calendarDate;const [y,m]=calendarSelectedDate.split('-').map(Number);calendarMonth=new Date(y,m-1,1);renderCalendar();}});

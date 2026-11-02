@@ -25,7 +25,7 @@ import boto3
 from botocore.client import Config
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StrictBool
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import IntegrityError
 from starlette.middleware.sessions import SessionMiddleware
@@ -97,6 +97,16 @@ class PlaceCategoryBody(BaseModel):
     # 길이/형식 검사는 place_category_fields()에서 한 번에 하고 422로 돌려준다.
     name: str
     color: str
+
+
+class AnniversaryBody(BaseModel):
+    # 이름/날짜 검사는 anniversary_fields()에서 하고 422로 돌려준다. repeatYearly는 진짜 bool만 받는다.
+    name: str
+    date: str
+    repeatYearly: StrictBool = True
+
+
+ANNIVERSARY_LIMIT = 200
 
 
 # 장소 전용 카테고리(사람용 archive_categories와 별개).
@@ -214,6 +224,15 @@ def startup() -> None:
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
         """))
         seed_place_categories(connection)
+        connection.execute(text("""
+            CREATE TABLE IF NOT EXISTS anniversaries (
+                anniversary_id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(50) NOT NULL,
+                anniversary_date CHAR(10) NOT NULL,
+                repeat_yearly BOOLEAN NOT NULL DEFAULT TRUE,
+                created_at BIGINT NOT NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+        """))
 
     try:
         photo_store.head_bucket(Bucket=BUCKET)
@@ -446,6 +465,73 @@ def delete_place_category(category_id: int, request: Request):
         moved = connection.execute(text("UPDATE records SET place_category_id=NULL WHERE place_category_id=:id"), {"id": category_id}).rowcount
         connection.execute(text("DELETE FROM place_categories WHERE place_category_id=:id"), {"id": category_id})
     return {"ok": True, "uncategorized": moved}
+
+
+def anniversary_fields(body: "AnniversaryBody") -> tuple[str, str]:
+    name = body.name.strip()
+    if not 1 <= len(name) <= 50:
+        raise HTTPException(status_code=422, detail="기념일 이름은 1~50자로 입력해 주세요.")
+    try:
+        parsed = datetime.strptime(body.date, "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(status_code=422, detail="기념일 날짜는 YYYY-MM-DD 형식이어야 합니다.")
+    # strptime은 2026-2-3처럼 자릿수가 모자란 값도 받으므로 다시 만든 문자열과 같은지 확인한다.
+    if parsed.isoformat() != body.date:
+        raise HTTPException(status_code=422, detail="기념일 날짜를 확인해 주세요.")
+    return name, body.date
+
+
+def anniversary_json(row) -> dict:
+    return {"id": row["id"], "name": row["name"], "date": row["date"], "repeatYearly": bool(row["repeatYearly"])}
+
+
+@app.get("/api/anniversaries")
+def get_anniversaries(request: Request):
+    require_auth(request)
+    with engine.connect() as connection:
+        rows = connection.execute(text(
+            "SELECT anniversary_id AS id, name, anniversary_date AS date, repeat_yearly AS repeatYearly FROM anniversaries ORDER BY anniversary_date, anniversary_id"
+        )).mappings().all()
+    return {"anniversaries": [anniversary_json(row) for row in rows]}
+
+
+@app.post("/api/anniversaries")
+def create_anniversary(body: AnniversaryBody, request: Request):
+    require_auth(request)
+    name, date = anniversary_fields(body)
+    with engine.begin() as connection:
+        if connection.execute(text("SELECT COUNT(*) FROM anniversaries")).scalar_one() >= ANNIVERSARY_LIMIT:
+            raise HTTPException(status_code=409, detail=f"기념일은 최대 {ANNIVERSARY_LIMIT}개까지 등록할 수 있어요.")
+        result = connection.execute(
+            text("INSERT INTO anniversaries (name, anniversary_date, repeat_yearly, created_at) VALUES (:name, :date, :repeat, :created_at)"),
+            {"name": name, "date": date, "repeat": body.repeatYearly, "created_at": int(time.time() * 1000)},
+        )
+        anniversary_id = result.lastrowid
+    return {"id": anniversary_id, "name": name, "date": date, "repeatYearly": body.repeatYearly}
+
+
+@app.put("/api/anniversaries/{anniversary_id}")
+def update_anniversary(anniversary_id: int, body: AnniversaryBody, request: Request):
+    require_auth(request)
+    name, date = anniversary_fields(body)
+    with engine.begin() as connection:
+        if connection.execute(text("SELECT 1 FROM anniversaries WHERE anniversary_id=:id"), {"id": anniversary_id}).first() is None:
+            raise HTTPException(status_code=404, detail="기념일을 찾을 수 없어요.")
+        connection.execute(
+            text("UPDATE anniversaries SET name=:name, anniversary_date=:date, repeat_yearly=:repeat WHERE anniversary_id=:id"),
+            {"name": name, "date": date, "repeat": body.repeatYearly, "id": anniversary_id},
+        )
+    return {"id": anniversary_id, "name": name, "date": date, "repeatYearly": body.repeatYearly}
+
+
+@app.delete("/api/anniversaries/{anniversary_id}")
+def delete_anniversary(anniversary_id: int, request: Request):
+    require_auth(request)
+    with engine.begin() as connection:
+        deleted = connection.execute(text("DELETE FROM anniversaries WHERE anniversary_id=:id"), {"id": anniversary_id}).rowcount
+    if not deleted:
+        raise HTTPException(status_code=404, detail="기념일을 찾을 수 없어요.")
+    return {"ok": True}
 
 
 def parse_place_category_id(value: Any) -> int | None:
