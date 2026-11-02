@@ -4,12 +4,17 @@ Small, deliberately readable FastAPI application. All user data is private to
 one account; records are stored as a JSON document in MySQL and image bytes in
 an S3-compatible MinIO bucket. See README.md before exposing it to the internet.
 """
+import collections
 import json
 import logging
 import math
 import os
 import secrets
+import threading
 import time
+import urllib.error
+import urllib.parse
+import urllib.request
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -25,6 +30,19 @@ from starlette.middleware.sessions import SessionMiddleware
 
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 log = logging.getLogger("relationship_archive")
+
+
+class RedactGeocodeQuery(logging.Filter):
+    """주소는 민감 정보이므로 접속 로그에 검색어를 남기지 않는다."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        args = record.args
+        if isinstance(args, tuple) and len(args) >= 3 and str(args[2]).startswith("/api/geocode"):
+            record.args = (*args[:2], "/api/geocode", *args[3:])
+        return True
+
+
+logging.getLogger("uvicorn.access").addFilter(RedactGeocodeQuery())
 
 DATABASE_URL = os.environ["DATABASE_URL"]
 ARCHIVE_PASSWORD = os.environ["ARCHIVE_PASSWORD"]
@@ -314,6 +332,151 @@ def parse_coordinate(value: Any, label: str, limit: float) -> float | None:
     if not math.isfinite(number) or abs(number) > limit:
         raise HTTPException(status_code=422, detail=f"{label} 값이 범위를 벗어났습니다.")
     return number
+
+
+# --- Address search (geocoding) -------------------------------------------
+# Only the fixed hosts below are ever contacted; the user's query is just
+# URL-encoded data, never a host or path. Addresses are private, so neither the
+# query nor the API key is written to the logs or echoed in any response.
+GEOCODE_NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
+GEOCODE_KAKAO_ADDRESS_URL = "https://dapi.kakao.com/v2/local/search/address.json"
+GEOCODE_KAKAO_KEYWORD_URL = "https://dapi.kakao.com/v2/local/search/keyword.json"
+GEOCODE_USER_AGENT = "NFA-private-archive/1.0"  # identifies this app (Nominatim usage policy)
+GEOCODE_TIMEOUT = 8
+GEOCODE_MAX_BYTES = 1024 * 1024
+GEOCODE_MAX_RESULTS = 5
+GEOCODE_CACHE_SIZE = 200
+GEOCODE_MAX_WAIT = 5.0  # longest we queue for Nominatim's 1 request/second slot
+
+_geocode_cache: "collections.OrderedDict[tuple, list]" = collections.OrderedDict()
+_geocode_cache_lock = threading.Lock()
+_nominatim_lock = threading.Lock()
+_nominatim_next_slot = 0.0
+_geocode_clock = time.monotonic
+_geocode_sleep = time.sleep
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None  # a redirect becomes an HTTPError instead of being followed
+
+
+_GEOCODE_OPENER = urllib.request.build_opener(_NoRedirect)
+
+
+def _geocode_error() -> HTTPException:
+    return HTTPException(status_code=502, detail="주소 검색 서비스에 연결하지 못했어요. 잠시 후 다시 시도하거나 좌표를 직접 입력해 주세요.")
+
+
+def _geocode_get_json(url: str, headers: dict) -> Any:
+    request = urllib.request.Request(url, headers=headers, method="GET")
+    try:
+        with _GEOCODE_OPENER.open(request, timeout=GEOCODE_TIMEOUT) as response:
+            raw = response.read(GEOCODE_MAX_BYTES + 1)
+        if len(raw) > GEOCODE_MAX_BYTES:
+            raise ValueError("response too large")
+        return json.loads(raw.decode("utf-8"))
+    except Exception as error:
+        # Log only the exception class: messages can contain the URL (= the address).
+        log.warning("geocode upstream request failed: %s", type(error).__name__)
+        raise _geocode_error()
+
+
+def _reserve_nominatim_slot() -> None:
+    """Allow at most one Nominatim request per second for the whole process."""
+    global _nominatim_next_slot
+    with _nominatim_lock:
+        now = _geocode_clock()
+        slot = max(now, _nominatim_next_slot)
+        wait = slot - now
+        if wait > GEOCODE_MAX_WAIT:
+            raise HTTPException(status_code=429, detail="주소 검색 요청이 많아요. 잠시 후 다시 시도해 주세요.")
+        _nominatim_next_slot = slot + 1.0
+    if wait > 0:
+        _geocode_sleep(wait)
+
+
+def _geocode_item(label: Any, address: Any, lat: Any, lng: Any) -> dict | None:
+    try:
+        latitude = parse_coordinate(lat, "위도", 90)
+        longitude = parse_coordinate(lng, "경도", 180)
+    except HTTPException:
+        return None
+    if latitude is None or longitude is None:
+        return None
+    address_text = str(address or "").strip()[:500]
+    label_text = str(label or "").strip()[:200] or address_text[:200]
+    if not label_text:
+        return None
+    return {"label": label_text, "address": address_text or label_text, "latitude": latitude, "longitude": longitude}
+
+
+def _geocode_nominatim(q: str) -> list:
+    params = urllib.parse.urlencode({"format": "jsonv2", "limit": GEOCODE_MAX_RESULTS, "accept-language": "ko", "countrycodes": "kr", "q": q})
+    _reserve_nominatim_slot()
+    data = _geocode_get_json(f"{GEOCODE_NOMINATIM_URL}?{params}", {"User-Agent": GEOCODE_USER_AGENT, "Accept": "application/json"})
+    if not isinstance(data, list):
+        raise _geocode_error()
+    results = []
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+        display = str(item.get("display_name") or "")
+        found = _geocode_item(item.get("name") or display.split(",")[0], display, item.get("lat"), item.get("lon"))
+        if found:
+            results.append(found)
+    return results[:GEOCODE_MAX_RESULTS]
+
+
+def _geocode_kakao(q: str, api_key: str) -> list:
+    headers = {"Authorization": f"KakaoAK {api_key}", "Accept": "application/json"}
+    params = urllib.parse.urlencode({"query": q, "size": GEOCODE_MAX_RESULTS})
+
+    def fetch(url: str) -> list:
+        data = _geocode_get_json(f"{url}?{params}", headers)
+        documents = data.get("documents") if isinstance(data, dict) else None
+        if not isinstance(documents, list):
+            raise _geocode_error()
+        return [doc for doc in documents if isinstance(doc, dict)]
+
+    results = []
+    for doc in fetch(GEOCODE_KAKAO_ADDRESS_URL):
+        road = doc.get("road_address") if isinstance(doc.get("road_address"), dict) else {}
+        address = road.get("address_name") or doc.get("address_name")
+        # Kakao: x is longitude, y is latitude.
+        found = _geocode_item(doc.get("address_name"), address, doc.get("y"), doc.get("x"))
+        if found:
+            results.append(found)
+    if not results:
+        for doc in fetch(GEOCODE_KAKAO_KEYWORD_URL):
+            found = _geocode_item(doc.get("place_name"), doc.get("road_address_name") or doc.get("address_name"), doc.get("y"), doc.get("x"))
+            if found:
+                results.append(found)
+    return results[:GEOCODE_MAX_RESULTS]
+
+
+@app.get("/api/geocode")
+def geocode(request: Request, q: str = ""):
+    require_auth(request)
+    query = q.strip()
+    if not 2 <= len(query) <= 200:
+        raise HTTPException(status_code=422, detail="검색할 주소를 2자 이상 200자 이하로 입력해 주세요.")
+    api_key = os.getenv("KAKAO_REST_API_KEY", "").strip()
+    provider = "kakao" if api_key else "nominatim"
+    cache_key = (provider, query.casefold())
+    with _geocode_cache_lock:
+        cached = _geocode_cache.get(cache_key)
+        if cached is not None:
+            _geocode_cache.move_to_end(cache_key)
+    if cached is None:
+        # Failures raise before this point, so they are never cached; empty results are.
+        cached = _geocode_kakao(query, api_key) if api_key else _geocode_nominatim(query)
+        with _geocode_cache_lock:
+            _geocode_cache[cache_key] = cached
+            _geocode_cache.move_to_end(cache_key)
+            while len(_geocode_cache) > GEOCODE_CACHE_SIZE:
+                _geocode_cache.popitem(last=False)
+    return {"results": [dict(item) for item in cached], "provider": provider}
 
 
 def parse_place_kind(value: Any) -> str:

@@ -22,6 +22,7 @@
 .place-card.is-active{border-color:var(--accent);background:#292532}
 .place-address{font-size:12px;color:var(--muted);margin:4px 0 8px;overflow-wrap:anywhere}
 .place-coordinates{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.address-search-row{display:flex;gap:8px}.address-search-row input{flex:1;min-width:0}.address-search-row .btn{white-space:nowrap}.address-results{margin-top:8px;display:grid;gap:6px}.address-msg{margin:0;font-size:13px;color:var(--muted,#777)}.address-result{display:block;width:100%;text-align:left;padding:8px 10px;border:1px solid var(--line,#ddd);border-radius:10px;background:transparent;color:inherit;font:inherit;cursor:pointer}.address-result span{display:block;font-size:12px;opacity:.75}.address-result.is-selected{border-color:var(--accent,#c0507a);box-shadow:0 0 0 2px #c0507a33}
 .place-marker{display:grid;place-items:center;border:2px solid #fff;color:#21192f;font-weight:800;box-shadow:0 2px 8px #0009;transition:box-shadow .15s}
 .place-pin-marker{border-radius:50%;background:var(--accent);font-size:16px}
 .place-house-marker{border-radius:12px;background:#ffd166;color:#3a2a00;border-width:3px;font-size:26px;box-shadow:0 0 0 4px #ffd16666,0 3px 12px #000a}
@@ -37,7 +38,12 @@
 .place-related-btn{border:0;background:transparent;color:var(--accent);padding:2px 0;text-align:left;cursor:pointer;overflow-wrap:anywhere}
 .place-nocoord{font-size:12px;color:var(--danger);margin:0 0 6px}
 .place-card h4{overflow-wrap:anywhere}
-@media(max-width:900px){.places-layout{grid-template-columns:1fr}.place-map-panel{position:relative;top:auto;order:-1}.place-map{height:420px;min-height:300px}}
+#placeGrid{align-content:start;max-height:min(80vh,860px);overflow-y:auto;overscroll-behavior:contain}
+.place-search-row{display:flex;align-items:center;gap:10px;margin:10px 0}
+.place-search-row input{flex:1;min-width:0;background:#17171c;border:1px solid var(--line);border-radius:9px;color:var(--text);padding:9px 11px}
+.place-search-row .hint{white-space:nowrap;font-size:12px}
+.place-empty-note{padding:14px;font-size:13px;color:var(--muted)}
+@media(max-width:900px){#placeGrid{max-height:60vh}.places-layout{grid-template-columns:1fr}.place-map-panel{position:relative;top:auto;order:-1}.place-map{height:420px;min-height:300px}}
 @media(max-width:650px){.place-coordinates{grid-template-columns:1fr 1fr}.place-map{height:360px}}
 </style>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
@@ -111,6 +117,7 @@
   </div>
   <div class="place-map-panel info-card">
     <div class="place-map-toolbar"><strong>함께한 장소 지도</strong><span class="hint" id="placeMapStatus">장소를 선택해 보세요.</span></div>
+    <div class="place-search-row"><input type="search" id="placeSearch" aria-label="저장된 장소 검색" placeholder="우리가 간 곳에서 찾기" autocomplete="off" maxlength="100"><span class="hint" id="placeSearchCount" role="status" aria-live="polite"></span></div>
     <div id="placeMap" class="place-map" role="application" aria-label="함께한 장소 지도"></div>
     <p class="place-map-hint" id="placeMapNotice" role="status"></p>
     <div id="placeDetail" class="place-detail"><small>장소를 선택하면 사진과 관련 기록이 여기에 모여요.</small></div>
@@ -160,7 +167,8 @@
     </select>
     <div class="field" style="margin-top:10px">
       <label for="address">주소</label>
-      <input id="address" name="address" maxlength="500" placeholder="예: 서울특별시 ...">
+      <div class="address-search-row"><input id="address" name="address" maxlength="500" placeholder="예: 서울특별시 ..."><button type="button" class="btn" id="addressSearchBtn">주소 검색</button></div>
+      <div class="address-results" id="addressResults" role="status" aria-live="polite"></div>
     </div>
     <div class="place-coordinates" style="margin-top:10px">
       <div class="field">
@@ -172,7 +180,7 @@
         <input id="placeLng" name="placeLng" type="number" step="any" min="-180" max="180" placeholder="예: 126.9780">
       </div>
     </div>
-    <span class="hint">주소만으로 좌표를 자동 추정하지 않아요. 지도에서 위치를 찍거나 좌표를 직접 입력해 주세요.</span>
+    <span class="hint">주소를 검색해 후보를 고르면 좌표가 채워져요. 검색어는 외부 지도 서비스(OpenStreetMap 또는 카카오)로 전달돼요. 지도에서 위치를 찍거나 좌표를 직접 입력해도 돼요.</span>
   </div>
   <div class="field full" id="placeField"><label for="place">관련 장소 (선택)</label><input id="place" name="place" placeholder="예: 한강공원, 작은 카페"></div>
 </div><div class="modal-foot"><button type="button" class="btn" id="cancelModal">취소</button><button type="submit" class="btn primary">저장하기</button></div></form></div></div>
@@ -224,8 +232,41 @@ let mediaPreviewObjectUrl=null;
 function clearMediaPreview(){if(mediaPreviewObjectUrl){URL.revokeObjectURL(mediaPreviewObjectUrl);mediaPreviewObjectUrl=null}$('#mediaPreview').hidden=true;$('#mediaPreviewImage').hidden=true;$('#mediaPreviewVideo').hidden=true;$('#mediaPreviewImage').removeAttribute('src');$('#mediaPreviewVideo').removeAttribute('src');$('#mediaPreviewVideo').load();$('#mediaPreviewCaption').textContent='';}
 function showMediaPreview(src,mediaType,label=''){clearMediaPreview();if(!src)return;const isVideo=mediaType==='video';const el=isVideo?$('#mediaPreviewVideo'):$('#mediaPreviewImage');el.src=src;el.hidden=false;$('#mediaPreviewCaption').textContent=label|| (isVideo?'동영상 미리보기':'사진 미리보기');$('#mediaPreview').hidden=false;}
 $('#photoFile').addEventListener('change',()=>{const files=[...$('#photoFile').files];if(!files.length){const old=records.find(x=>x.id===editingId);const existing=mediaItems(old||{});if(existing.length)showMediaPreview(existing[0].url,existing[0].mediaType,`${existing.length}개 미디어가 저장되어 있어요. 새 파일을 선택하면 기존 첨부에 추가됩니다.`);else clearMediaPreview();return}const file=files[0];const previewUrl=URL.createObjectURL(file);showMediaPreview(previewUrl,file.type.startsWith('video/')?'video':'image',files.length>1?`${files.length}개 파일 선택됨 · 첫 파일: ${file.name}`:`${file.name} · ${(file.size/1024/1024).toFixed(1)} MB`);mediaPreviewObjectUrl=previewUrl;});
-function openModal(type='diary',id=null){editingId=id;$('#recordForm').reset();clearMediaPreview();$('#date').value=localDate();$('#type').value=type;$('#placeKind').value='visit';$('#address').value='';$('#placeLat').value=pendingPlaceCoords?pendingPlaceCoords.lat.toFixed(7):'';$('#placeLng').value=pendingPlaceCoords?pendingPlaceCoords.lng.toFixed(7):'';if(type==='person'&&!id&&lastPersonCategory&&[...$('#category').options].some(o=>o.value===lastPersonCategory))$('#category').value=lastPersonCategory;$('#photoFile').required=false;$('#photoFile').value='';$('#photoHint').textContent='여러 사진·동영상을 선택할 수 있어요. 사진은 파일당 15MB, 동영상은 파일당 200MB까지 비공개 서버에 저장됩니다.';let r=records.find(x=>x.id===id);if(r){$('#date').value=r.date||localDate();$('#type').value=r.type;$('#title').value=r.title;$('#body').value=r.body||'';$('#category').value=r.category||'기억';$('#itemKind').value=r.itemKind||'기타';$('#giver').value=r.giver||'';$('#certainty').value=r.certainty||'확실히 알게 된 것';$('#tags').value=tagsOf(r).join(', ');$('#place').value=r.place||'';$('#placeKind').value=r.placeKind||'visit';$('#address').value=r.address||'';$('#placeLat').value=r.latitude??'';$('#placeLng').value=r.longitude??'';const existing=mediaItems(r);$('#photoHint').textContent=existing.length?`기존 미디어 ${existing.length}개가 있어요. 새 파일을 선택하면 기존 첨부에 추가됩니다.`:'사진 또는 동영상을 선택해 주세요.';if(existing.length)showMediaPreview(existing[0].url,existing[0].mediaType,`현재 저장된 미디어 ${existing.length}개 · 새 파일을 선택하면 추가돼요.`);}$('#modalTitle').textContent=r?'기록 수정':'기록 추가';updateFormFields();$('#modalBackdrop').classList.remove('hidden');}
-function closeModal(){$('#modalBackdrop').classList.add('hidden');editingId=null}
+let addressSearching=false,addressSearchSeq=0,addressResultItems=[];
+function clearAddressResults(){addressSearchSeq++;addressSearching=false;addressResultItems=[];const box=$('#addressResults');if(box)box.innerHTML='';const btn=$('#addressSearchBtn');if(btn){btn.disabled=false;btn.textContent='주소 검색'}}
+function addressMessage(text){$('#addressResults').innerHTML=`<p class="address-msg">${esc(text)}</p>`}
+async function searchAddress(){
+  if(addressSearching)return;
+  const q=$('#address').value.trim();
+  if(q.length<2){addressResultItems=[];addressMessage('검색할 주소를 2자 이상 입력해 주세요.');return}
+  const seq=++addressSearchSeq;const btn=$('#addressSearchBtn');
+  addressSearching=true;btn.disabled=true;btn.textContent='검색 중…';addressResultItems=[];addressMessage('주소를 검색하는 중이에요…');
+  try{
+    const out=await api('/geocode?q='+encodeURIComponent(q));
+    if(seq!==addressSearchSeq)return;
+    addressResultItems=Array.isArray(out?.results)?out.results:[];
+    if(!addressResultItems.length){addressMessage('검색 결과가 없어요. 주소를 더 간단히 적거나 좌표를 직접 입력해 주세요.');return}
+    $('#addressResults').innerHTML='<p class="address-msg">맞는 위치를 직접 골라 주세요.</p>'+addressResultItems.map((item,i)=>`<button type="button" class="address-result" data-addr-idx="${i}" aria-pressed="false"><strong>${esc(item.label)}</strong><span>${esc(item.address)}</span></button>`).join('');
+  }catch(err){
+    if(seq!==addressSearchSeq)return;
+    addressResultItems=[];addressMessage(err.message||'주소를 검색하지 못했어요. 좌표를 직접 입력해 주세요.');
+  }finally{
+    if(seq===addressSearchSeq){addressSearching=false;btn.disabled=false;btn.textContent='주소 검색'}
+  }
+}
+function pickAddressResult(i){
+  const item=addressResultItems[i];if(!item)return;
+  const lat=Number(item.latitude),lng=Number(item.longitude);
+  if(!Number.isFinite(lat)||!Number.isFinite(lng))return;
+  $('#address').value=item.address;$('#placeLat').value=lat.toFixed(7);$('#placeLng').value=lng.toFixed(7);
+  document.querySelectorAll('#addressResults .address-result').forEach(b=>{const on=Number(b.dataset.addrIdx)===i;b.classList.toggle('is-selected',on);b.setAttribute('aria-pressed',String(on))});
+  const note=$('#addressResults').querySelector('.address-msg');if(note)note.textContent=`선택됨: ${item.label} · 위도/경도가 채워졌어요. 저장 후 지도에서 위치를 확인해 주세요.`;
+}
+$('#addressSearchBtn').addEventListener('click',searchAddress);
+$('#address').addEventListener('keydown',e=>{if(e.key!=='Enter'||e.isComposing)return;e.preventDefault();searchAddress()});
+$('#addressResults').addEventListener('click',e=>{const b=e.target.closest('[data-addr-idx]');if(b)pickAddressResult(Number(b.dataset.addrIdx))});
+function openModal(type='diary',id=null){editingId=id;$('#recordForm').reset();clearMediaPreview();clearAddressResults();$('#date').value=localDate();$('#type').value=type;$('#placeKind').value='visit';$('#address').value='';$('#placeLat').value=pendingPlaceCoords?pendingPlaceCoords.lat.toFixed(7):'';$('#placeLng').value=pendingPlaceCoords?pendingPlaceCoords.lng.toFixed(7):'';if(type==='person'&&!id&&lastPersonCategory&&[...$('#category').options].some(o=>o.value===lastPersonCategory))$('#category').value=lastPersonCategory;$('#photoFile').required=false;$('#photoFile').value='';$('#photoHint').textContent='여러 사진·동영상을 선택할 수 있어요. 사진은 파일당 15MB, 동영상은 파일당 200MB까지 비공개 서버에 저장됩니다.';let r=records.find(x=>x.id===id);if(r){$('#date').value=r.date||localDate();$('#type').value=r.type;$('#title').value=r.title;$('#body').value=r.body||'';$('#category').value=r.category||'기억';$('#itemKind').value=r.itemKind||'기타';$('#giver').value=r.giver||'';$('#certainty').value=r.certainty||'확실히 알게 된 것';$('#tags').value=tagsOf(r).join(', ');$('#place').value=r.place||'';$('#placeKind').value=r.placeKind||'visit';$('#address').value=r.address||'';$('#placeLat').value=r.latitude??'';$('#placeLng').value=r.longitude??'';const existing=mediaItems(r);$('#photoHint').textContent=existing.length?`기존 미디어 ${existing.length}개가 있어요. 새 파일을 선택하면 기존 첨부에 추가됩니다.`:'사진 또는 동영상을 선택해 주세요.';if(existing.length)showMediaPreview(existing[0].url,existing[0].mediaType,`현재 저장된 미디어 ${existing.length}개 · 새 파일을 선택하면 추가돼요.`);}$('#modalTitle').textContent=r?'기록 수정':'기록 추가';updateFormFields();$('#modalBackdrop').classList.remove('hidden');}
+function closeModal(){$('#modalBackdrop').classList.add('hidden');editingId=null;clearAddressResults()}
 let detailId=null;
 function openDetailModal(id){
   const r=records.find(x=>x.id===id);if(!r)return;
@@ -319,6 +360,8 @@ let activePlaceId=null;
 let pendingPlaceCoords=null;
 let pickingPlaceOnMap=false;
 let placeTileErrors=0;
+let placeSearchQuery='';
+let pinnedPlaceId=null;
 
 const trimText=s=>String(s??'').trim();
 function safeMediaUrl(u){const s=trimText(u);return /^(\/(?!\/)|https?:\/\/)/.test(s)?s:''}
@@ -327,6 +370,63 @@ function placeCoords(r){
   if(!r||!valid(r.latitude)||!valid(r.longitude))return null;
   const lat=Number(r.latitude),lng=Number(r.longitude);
   return lat>=-90&&lat<=90&&lng>=-180&&lng<=180?{lat,lng}:null;
+}
+const normSearch=s=>String(s??'').normalize('NFC').replace(/\s+/g,' ').trim().toLowerCase();
+function placeMatches(r){
+  const q=normSearch(placeSearchQuery);
+  return !q||[r.title,r.address,r.body].some(f=>normSearch(f).includes(q));
+}
+// 화면 전용: records 순서는 그대로 두고, 필터 후 고정된 장소 하나만 맨 앞으로 보낸다.
+function visiblePlaces(){
+  const list=records.filter(r=>r.type==='place'&&placeMatches(r));
+  const i=pinnedPlaceId?list.findIndex(r=>r.id===pinnedPlaceId):-1;
+  return i>0?[list[i],...list.slice(0,i),...list.slice(i+1)]:list;
+}
+function updatePlaceSearchCount(){
+  const el=$('#placeSearchCount');if(!el)return;
+  el.textContent=normSearch(placeSearchQuery)?(visiblePlaces().length?`${visiblePlaces().length}곳 찾음`:'찾은 곳 없음'):'';
+}
+function renderPlaceList(){
+  const grid=$('#placeGrid');if(!grid)return;
+  if(pinnedPlaceId&&!records.some(x=>x.id===pinnedPlaceId&&x.type==='place'))pinnedPlaceId=null;
+  const all=records.some(r=>r.type==='place');
+  const list=visiblePlaces();
+  if(!all)grid.innerHTML=emptyHtml('함께한 장소를 모아보세요','장소를 추가하고 주소와 좌표를 등록하면 지도에 표시할 수 있어요.');
+  else if(!list.length)grid.innerHTML='<div class="info-card place-empty-note">검색어와 일치하는 장소가 없어요.</div>';
+  else grid.innerHTML=list.map(placeCardHtml).join('');
+  updatePlaceSearchCount();
+}
+function applyPlaceMarkerFilter(){
+  if(!placeMapInstance)return;
+  placeMapMarkers.forEach((m,id)=>{
+    const r=records.find(x=>x.id===id);
+    const show=!!r&&placeMatches(r);
+    if(show&&!placeMapInstance.hasLayer(m))m.addTo(placeMapInstance);
+    else if(!show&&placeMapInstance.hasLayer(m))m.remove();
+  });
+}
+function updatePlaceSearch(){
+  const input=$('#placeSearch');if(!input)return;
+  placeSearchQuery=input.value;
+  renderPlaceList();
+  applyPlaceMarkerFilter();
+  const act=activePlaceId&&records.find(x=>x.id===activePlaceId&&x.type==='place');
+  if(act&&!placeMatches(act)){
+    activePlaceId=null;renderPlaceDetail();refreshPlaceMarkers();
+    $('#placeMapStatus').textContent='장소를 선택해 보세요.';
+  }
+}
+// 마커 클릭: 카드 DOM만 옮겨 맨 앞에 올린다(마커/팝업은 건드리지 않음).
+function pinPlaceFirst(id){
+  const grid=$('#placeGrid');
+  const r=records.find(x=>x.id===id&&x.type==='place');
+  if(!grid||!r||!placeMatches(r))return;
+  pinnedPlaceId=id;
+  const ids=visiblePlaces().map(x=>x.id);
+  const cards=new Map([...grid.querySelectorAll('.place-card')].map(el=>[el.dataset.placeSelect,el]));
+  if(ids.length!==cards.size||ids.some(i=>!cards.has(i)))renderPlaceList();
+  else ids.forEach(i=>grid.appendChild(cards.get(i)));
+  grid.scrollTop=0;
 }
 function relatedRecordsOf(p){
   const keys=[trimText(p.title),trimText(p.address)].filter(Boolean);
@@ -384,7 +484,7 @@ function renderPlaceDetail(){
   if(!r){activePlaceId=null;panel.innerHTML='<small>장소를 선택하면 사진과 관련 기록이 여기에 모여요.</small>';return}
   panel.innerHTML=placeDetailHtml(r,true);
 }
-function selectPlace(id,{pan=true,popup=true,scroll=false}={}){
+function selectPlace(id,{pan=true,popup=true,scroll=false,list=true}={}){
   const r=records.find(x=>x.id===id&&x.type==='place');
   if(!r)return;
   activePlaceId=id;
@@ -400,10 +500,22 @@ function selectPlace(id,{pan=true,popup=true,scroll=false}={}){
   }
   if(scroll){
     if(window.matchMedia('(max-width: 900px)').matches)$('#placeMap').scrollIntoView({behavior:'smooth',block:'center'});
-    else document.querySelector(`.place-card[data-place-select="${CSS.escape(id)}"]`)?.scrollIntoView({block:'nearest'});
+    else if(list)document.querySelector(`.place-card[data-place-select="${CSS.escape(id)}"]`)?.scrollIntoView({block:'nearest'});
   }
 }
 
+// After saving a place: show it on the map right away (switching to the places view if needed).
+function focusSavedPlace(id){
+  const r=records.find(x=>x.id===id&&x.type==='place');
+  if(!r||!placeCoords(r))return;
+  // 검색 필터에 가려지면 방금 저장한 마커가 안 보이므로 검색어를 지운다.
+  if(!placeMatches(r)){$('#placeSearch').value='';updatePlaceSearch()}
+  const wasHidden=activeView!=='places';
+  activePlaceId=id;
+  if(wasHidden)switchView('places');
+  const go=()=>{if(placeMapInstance)placeMapInstance.invalidateSize();selectPlace(id,{scroll:true})};
+  if(wasHidden)setTimeout(go,200);else go();
+}
 function renderPlacesMap(){
   const host=$('#placeMap');
   if(!host)return;
@@ -440,15 +552,27 @@ function renderPlacesMap(){
   records.filter(r=>r.type==='place').forEach(r=>{
     const coords=placeCoords(r);
     if(!coords)return;
+    const hidden=!placeMatches(r);
     const active=r.id===activePlaceId;
-    const marker=L.marker([coords.lat,coords.lng],{icon:placeIcon(r,active),zIndexOffset:(r.placeKind==='home'?500:0)+(active?1000:0),title:r.title,keyboard:true}).addTo(placeMapInstance);
+    const marker=L.marker([coords.lat,coords.lng],{icon:placeIcon(r,active),zIndexOffset:(r.placeKind==='home'?500:0)+(active?1000:0),title:r.title,keyboard:true});
+    if(!hidden)marker.addTo(placeMapInstance);
     marker.bindPopup(()=>placeDetailHtml(records.find(x=>x.id===r.id)||r,false),{maxWidth:260});
-    marker.on('click',()=>selectPlace(r.id,{pan:false,popup:false,scroll:true}));
+    marker.on('click',()=>{pinPlaceFirst(r.id);selectPlace(r.id,{pan:false,popup:false,scroll:true,list:false})});
     placeMapMarkers.set(r.id,marker);
   });
   setTimeout(()=>placeMapInstance&&placeMapInstance.invalidateSize(),100);
 }
 
+{
+  const ps=$('#placeSearch');
+  ps.addEventListener('input',updatePlaceSearch);
+  ps.addEventListener('compositionend',updatePlaceSearch);
+  ps.addEventListener('keydown',e=>{
+    if(e.isComposing||e.keyCode===229)return;
+    if(e.key==='Enter'){e.preventDefault();const first=visiblePlaces()[0];if(first)selectPlace(first.id,{scroll:true})}
+    else if(e.key==='Escape'){e.preventDefault();if(ps.value){ps.value='';updatePlaceSearch()}}
+  });
+}
 document.addEventListener('click',e=>{
   const pick=e.target.closest('[data-pick-map]');
   if(pick){
@@ -470,7 +594,7 @@ document.addEventListener('keydown',e=>{
 });
 
 function render(){const list=filteredRecords();$('#statRecords').textContent=records.length;$('#statPhotos').textContent=records.filter(r=>r.type==='photo'&&mediaItems(r).length).length;const start=archiveSettings.relationshipStart;const dayCount=start?Math.floor((new Date(localDate()+'T00:00:00')-new Date(start+'T00:00:00'))/86400000)+1:0;$('#relationshipDays').textContent=dayCount>0?dayCount.toLocaleString('ko-KR')+'일':'—';$('#relationshipLabel').textContent=start?'함께한 날':'연애 시작일 미등록';$('#resultCount').textContent=`${list.length}개의 기록`;$('#timeline').innerHTML=list.length?list.map(recordHtml).join(''):emptyHtml('아직 기록이 없어요','첫 번째 기억을 천천히 남겨보세요.');const photos=records.filter(r=>r.type==='photo'&&mediaItems(r).length&&(!$('#searchPhotos').value||searchText(r).includes($('#searchPhotos').value.toLowerCase()))&&(!$('#photoDate').value||r.date===$('#photoDate').value)).sort((a,b)=>(b.date||'').localeCompare(a.date||''));$('#photoCount').textContent=`사진 · 동영상 ${photos.length}개 기록`;$('#photoGrid').innerHTML=photos.length?photos.map(r=>{const first=mediaItems(r)[0];return `<article class="photo-card">${first.mediaType==='video'?`<video src="${esc(first.url)}" controls preload="metadata" playsinline aria-label="${esc(r.title)}"></video>`:`<img data-detail="${esc(r.id)}" src="${esc(first.url)}" alt="${esc(r.title)}" loading="lazy">`}${mediaItems(r).length>1?`<span class="media-count">+${mediaItems(r).length-1}개 미디어</span>`:''}<div class="photo-info"><strong data-detail="${esc(r.id)}">${esc(r.title)}</strong><small>${esc(r.date)}${r.place?' · '+esc(r.place):''}</small><div class="tags">${tagHtml(r)}</div></div><div class="photo-tools"><button class="iconbtn" data-edit="${esc(r.id)}">수정</button><button class="iconbtn" data-delete="${esc(r.id)}">삭제</button></div></article>`}).join(''):emptyHtml('사진이나 동영상이 아직 없어요','미디어를 올리고 그날의 이야기를 덧붙여 보세요.');const places=records.filter(r=>r.type==='place');
-$('#placeGrid').innerHTML=places.length?places.map(placeCardHtml).join(''):emptyHtml('함께한 장소를 모아보세요','장소를 추가하고 주소와 좌표를 등록하면 지도에 표시할 수 있어요.');
+renderPlaceList();
 renderPlacesMap();
 renderCategoryOptions();renderPersonView();renderCalendar();renderItemsView();}
 const views={all:['전체 기록','함께한 순간과 그 사람에 대해 알게 된 것들을 모아두는 곳.'],calendar:['캘린더','날짜별로 기록을 모아보고, 그날의 기억을 다시 꺼내봐요.'],photos:['미디어','사진과 동영상을 모아보고, 각 미디어에 담긴 이야기를 확인해요.'],items:['소유물','편지와 선물, 커플템처럼 추억이 담긴 물건을 이미지로 모아봐요.'],person:['그 사람에 대해','좋아하는 것, 싫어하는 것 등 알아가는 과정을 기록해보세요.'],places:['장소와 음식','함께한 장소와 먹었던 음식, 다시 가고 싶은 곳.'],tags:['태그 모아보기','하나의 태그로 여러 날의 기억을 한 번에 찾아봐요.'],updates:['업데이트 로그','사이트에 추가되거나 개선된 기능을 확인해요.'],settings:['백업과 설정','소중한 기록을 내보내고 안전하게 보관해요.']};
@@ -479,7 +603,7 @@ function setSidebarCollapsed(collapsed){const app=$('#archiveApp');app.classList
 $('#sidebarToggle').addEventListener('click',()=>setSidebarCollapsed(!$('#archiveApp').classList.contains('sidebar-collapsed')));$('#sidebarBackdrop').addEventListener('click',()=>setSidebarCollapsed(true));
 function switchView(v){if(v==='calendar')renderCalendar();if(window.matchMedia('(max-width: 650px)').matches)setSidebarCollapsed(true);activeView=v;document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===v));Object.keys(views).forEach(k=>$('#view-'+k).classList.toggle('hidden',k!==v));$('#pageTitle').textContent=views[v][0];$('#pageSub').textContent=views[v][1];$('#eyebrow').textContent=v==='settings'?'DATA & PRIVACY':'YOUR PRIVATE ARCHIVE';$('#addRecord').textContent=v==='photos'?'＋ 미디어 추가':v==='items'?'＋ 소유물 추가':v==='person'?'＋ 정보 추가':v==='places'?'＋ 장소 추가':'＋ 기록 추가';if(v==='person')renderPersonView();if(v==='places')setTimeout(()=>{renderPlacesMap();if(placeMapInstance)placeMapInstance.invalidateSize()},150);}
 async function uploadPhoto(file){if(!file)return null;const isVideo=file.type.startsWith('video/');if(!file.type.startsWith('image/')&&!isVideo)throw new Error('이미지 또는 동영상 파일만 올릴 수 있어요.');const limit=isVideo?200*1024*1024:15*1024*1024;if(file.size>limit)throw new Error(isVideo?'동영상은 200MB 이하로 올려주세요.':'사진은 15MB 이하로 올려주세요.');const fd=new FormData();fd.append('file',file);const out=await api('/photos',{method:'POST',body:fd});return {url:out.url,mediaType:isVideo?'video':'image'}}
-$('#recordForm').addEventListener('submit',async e=>{e.preventDefault();if(!ensureLoaded())return;const t=$('#type').value;const files=[...$('#photoFile').files];const title=$('#title').value.trim();if(!title){toast('제목을 적어주세요.');return}const old=records.find(x=>x.id===editingId);const latText=$('#placeLat').value.trim();const lngText=$('#placeLng').value.trim();if(t==='place'&&(!!latText!==!!lngText)){toast('위도와 경도를 모두 입력하거나 둘 다 비워 주세요.');return}if(t==='place'&&latText&&(!Number.isFinite(Number(latText))||!Number.isFinite(Number(lngText))||Number(latText)<-90||Number(latText)>90||Number(lngText)<-180||Number(lngText)>180)){toast('위도 또는 경도 범위를 확인해 주세요.');return}const existingImages=mediaItems(old||{});if((t==='photo'||t==='item')&&!existingImages.length&&!files.length){toast('사진 또는 동영상 파일을 선택해 주세요.');return}let images=existingImages.map(m=>({url:m.url,mediaType:m.mediaType||'image'}));try{for(let i=0;i<files.length;i++){toast(files.length>1?`미디어 업로드 중… (${i+1}/${files.length})`:'미디어 업로드 중…');images.push(await uploadPhoto(files[i]));}}catch(err){toast(err.message);return}const primary=images[0]||null;const r={id:editingId||crypto.randomUUID?.()||String(Date.now()),type:t,date:t==='person'?(old?.date||localDate()):$('#date').value,title,body:$('#body').value.trim(),category:$('#category').value,itemKind:t==='item'?$('#itemKind').value:(old?.itemKind||''),giver:t==='item'?$('#giver').value.trim():(old?.giver||''),certainty:$('#certainty').value,tags:t==='person'?(old?.tags||[]):normalizedTags($('#tags').value),place:t==='person'?(old?.place||''):$('#place').value.trim(),placeKind:t==='place'?$('#placeKind').value:(old?.placeKind||'visit'),address:t==='place'?$('#address').value.trim():(old?.address||''),latitude:t==='place'?(latText?Number(latText):null):(old?.latitude??null),longitude:t==='place'?(lngText?Number(lngText):null):(old?.longitude??null),images,image:primary?.url||null,mediaType:primary?.mediaType||null,createdAt:old?.createdAt||Date.now(),updatedAt:Date.now()};if(t==='person')lastPersonCategory=r.category;if(!r.title){toast('제목을 적어주세요.');return}if((t==='photo'||t==='item')&&!r.images.length){toast('사진 또는 동영상 파일을 선택해 주세요.');return}if(old)records=records.map(x=>x.id===old.id?r:x);else records.push(r);if(t==='place')pendingPlaceCoords=null;closeModal();closeDetailModal();render();await persist();toast(old?'기록을 수정했어요.':'기록을 저장했어요.');});
+$('#recordForm').addEventListener('submit',async e=>{e.preventDefault();if(!ensureLoaded())return;const t=$('#type').value;const files=[...$('#photoFile').files];const title=$('#title').value.trim();if(!title){toast('제목을 적어주세요.');return}const old=records.find(x=>x.id===editingId);const latText=$('#placeLat').value.trim();const lngText=$('#placeLng').value.trim();if(t==='place'&&(!!latText!==!!lngText)){toast('위도와 경도를 모두 입력하거나 둘 다 비워 주세요.');return}if(t==='place'&&latText&&(!Number.isFinite(Number(latText))||!Number.isFinite(Number(lngText))||Number(latText)<-90||Number(latText)>90||Number(lngText)<-180||Number(lngText)>180)){toast('위도 또는 경도 범위를 확인해 주세요.');return}const existingImages=mediaItems(old||{});if((t==='photo'||t==='item')&&!existingImages.length&&!files.length){toast('사진 또는 동영상 파일을 선택해 주세요.');return}let images=existingImages.map(m=>({url:m.url,mediaType:m.mediaType||'image'}));try{for(let i=0;i<files.length;i++){toast(files.length>1?`미디어 업로드 중… (${i+1}/${files.length})`:'미디어 업로드 중…');images.push(await uploadPhoto(files[i]));}}catch(err){toast(err.message);return}const primary=images[0]||null;const r={id:editingId||crypto.randomUUID?.()||String(Date.now()),type:t,date:t==='person'?(old?.date||localDate()):$('#date').value,title,body:$('#body').value.trim(),category:$('#category').value,itemKind:t==='item'?$('#itemKind').value:(old?.itemKind||''),giver:t==='item'?$('#giver').value.trim():(old?.giver||''),certainty:$('#certainty').value,tags:t==='person'?(old?.tags||[]):normalizedTags($('#tags').value),place:t==='person'?(old?.place||''):$('#place').value.trim(),placeKind:t==='place'?$('#placeKind').value:(old?.placeKind||'visit'),address:t==='place'?$('#address').value.trim():(old?.address||''),latitude:t==='place'?(latText?Number(latText):null):(old?.latitude??null),longitude:t==='place'?(lngText?Number(lngText):null):(old?.longitude??null),images,image:primary?.url||null,mediaType:primary?.mediaType||null,createdAt:old?.createdAt||Date.now(),updatedAt:Date.now()};if(t==='person')lastPersonCategory=r.category;if(!r.title){toast('제목을 적어주세요.');return}if((t==='photo'||t==='item')&&!r.images.length){toast('사진 또는 동영상 파일을 선택해 주세요.');return}if(old)records=records.map(x=>x.id===old.id?r:x);else records.push(r);if(t==='place')pendingPlaceCoords=null;const placeMoved=t==='place'&&(!old||old.type!=='place'||(old.latitude??null)!==r.latitude||(old.longitude??null)!==r.longitude);closeModal();closeDetailModal();render();if(placeMoved)focusSavedPlace(r.id);await persist();toast(old?'기록을 수정했어요.':'기록을 저장했어요.');});
 async function deleteRecord(id){if(!ensureLoaded())return;const r=records.find(x=>x.id===id);if(!r||!confirm(`“${r.title}” 기록을 삭제할까요?`))return;records=records.filter(x=>x.id!==id);render();await persist();toast('기록을 삭제했어요.')}
 document.addEventListener('click',e=>{
   const nav=e.target.closest('[data-view]');if(nav){switchView(nav.dataset.view);return}
