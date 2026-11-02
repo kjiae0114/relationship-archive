@@ -58,6 +58,17 @@
 .field .pcat-color,.pcat-color{width:44px;height:38px;padding:2px;background:#17171c;border:1px solid var(--line);border-radius:9px}
 @media(max-width:900px){#placeGrid{max-height:60vh}.places-layout{grid-template-columns:1fr}.place-map-panel{position:relative;top:auto;order:-1}.place-map{height:420px;min-height:300px}}
 @media(max-width:650px){.place-coordinates{grid-template-columns:1fr 1fr}.place-map{height:360px}}
+/* 오늘의 기억 */
+.today-memories{margin:0 0 22px;padding:16px 18px}
+.today-memories h3{margin:0 0 10px;font-size:15px}
+.today-memory-list{display:grid;gap:8px}
+.today-memory{display:flex;align-items:center;gap:12px;min-width:0;cursor:pointer;border:1px solid var(--line);border-radius:12px;background:var(--panel2);padding:8px 10px}
+.today-memory:hover{border-color:#6d647d}
+.today-memory img{width:48px;height:48px;flex:0 0 48px;object-fit:cover;border-radius:8px;background:#2c2a32}
+.today-memory-text{min-width:0}
+.today-memory-text small{display:block;color:var(--accent);font-size:11px}
+.today-memory-text strong{display:block;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.today-memories-more{margin:8px 0 0;font-size:12px;color:var(--muted)}
 </style>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
@@ -86,6 +97,7 @@
   <div class="topline"><div><div class="eyebrow" id="eyebrow">YOUR PRIVATE ARCHIVE</div><h1 class="page-title" id="pageTitle">전체 기록</h1><div class="subtitle" id="pageSub">함께한 순간과 그 사람에 대해 알게 된 것들을 모아두는 곳.</div></div><div class="actions"><button class="btn" id="quickPhoto">＋ 미디어</button><button class="btn primary" id="addRecord">＋ 기록 추가</button><button class="btn" id="logoutBtn" title="로그아웃">로그아웃</button></div></div>
   <section id="view-all">
     <div class="stats"><div class="stat"><span>전체 기록</span><strong id="statRecords">0</strong></div><div class="stat"><span>사진 · 동영상</span><strong id="statPhotos">0</strong></div><div class="stat"><span id="relationshipLabel">함께한 날</span><strong id="relationshipDays">—</strong></div></div>
+    <div id="todayMemories" class="info-card today-memories hidden"></div>
     <div class="searchbar"><input class="search" id="searchAll" placeholder="기억, 장소, 태그를 검색해 보세요…"><select class="filter" id="filterType"><option value="all">모든 종류</option><option value="diary">일기 / 추억</option><option value="photo">사진 · 동영상</option><option value="person">그 사람에 대해</option><option value="place">장소와 음식</option><option value="item">소유물</option></select><input type="date" class="filter" id="filterDate" aria-label="날짜 필터"></div>
     <div class="section-head"><h3>기록 타임라인</h3><span id="resultCount">0개의 기록</span></div><div class="record-list" id="timeline"></div>
   </section>
@@ -142,7 +154,7 @@
   <section id="view-tags" class="hidden"><div class="section-head"><h3>태그로 기억 찾기</h3><span>태그를 누르면 관련 기록을 모아봐요</span></div><div id="tagCloud" class="tags" style="gap:9px"></div><div class="section-head"><h3 id="tagResultTitle">모든 태그</h3></div><div class="record-list" id="tagResults"></div></section>
   <section id="view-updates" class="hidden">
     <div class="info-card" style="margin-bottom:12px"><div class="meta">NFA · CHANGELOG</div><h4>업데이트 로그</h4><p>사이트에 추가되거나 개선된 기능을 기록해 두는 곳이에요.</p></div>
-    <div class="info-card" style="margin-bottom:10px"><div class="meta">2026.11.01 · 장소 지도</div><h4>함께한 장소 지도</h4><p>장소 기록에 유형, 주소, 좌표를 추가하고 지도에서 위치를 선택할 수 있도록 개선했어요. ‘우리 집’은 방문 장소와 구분되는 집 모양 표식으로 표시됩니다. 지도에는 좌표가 등록된 장소만 나타나요.</p></div><div class="info-card" style="margin-bottom:10px"><div class="meta">2026.10.27 · 기록 입력</div><h4>이전 카테고리 유지</h4><p>‘그 사람에 대해’에서 새 기록을 추가할 때 직전에 사용한 카테고리가 자동으로 선택되도록 개선했어요.</p></div>
+    <div class="info-card" style="margin-bottom:10px"><div class="meta">2026.11.02 · 분류</div><h4>오늘의 기억</h4><p>전체 기록 화면에서 예전 같은 날(월·일이 같은 날)에 남긴 기록을 ‘N년 전 오늘’로 모아 보여줘요. 그 사람에 대해 적은 정보와 우리 집은 제외하고, 해당하는 기록이 없으면 보이지 않아요.</p></div><div class="info-card" style="margin-bottom:10px"><div class="meta">2026.11.01 · 장소 지도</div><h4>함께한 장소 지도</h4><p>장소 기록에 유형, 주소, 좌표를 추가하고 지도에서 위치를 선택할 수 있도록 개선했어요. ‘우리 집’은 방문 장소와 구분되는 집 모양 표식으로 표시됩니다. 지도에는 좌표가 등록된 장소만 나타나요.</p></div><div class="info-card" style="margin-bottom:10px"><div class="meta">2026.10.27 · 기록 입력</div><h4>이전 카테고리 유지</h4><p>‘그 사람에 대해’에서 새 기록을 추가할 때 직전에 사용한 카테고리가 자동으로 선택되도록 개선했어요.</p></div>
     <div class="info-card" style="margin-bottom:10px"><div class="meta">2026.10.26 · 기록 관리</div><h4>캘린더 기능 추가</h4><p>날짜별 기록을 달력에서 확인하고, 원하는 날짜를 선택해 해당 일자의 기록을 살펴볼 수 있도록 했어요.</p></div>
     <div class="info-card" style="margin-bottom:10px"><div class="meta">2026.10.25 · 기록 입력</div><h4>‘그 사람에 대해’ 입력 항목 간소화</h4><p>기억할 내용과 분류, 기억의 확실성을 중심으로 입력하도록 정리했어요. 날짜는 자동으로 기록하고 입력 화면에서는 숨겨요.</p></div><div class="info-card" style="margin-bottom:10px"><div class="meta">2026.10.25 · UI</div><h4>업데이트 로그 메뉴 추가</h4><p>사이드 메뉴에서 업데이트 내역을 한곳에 모아 확인할 수 있도록 했어요.</p></div>
     <div class="info-card" style="margin-bottom:10px"><div class="meta">2026.10.24 · 기록 관리</div><h4>‘그 사람에 대해’ 보기 개선</h4><p>전체 타임라인과 카테고리별 보기를 추가하고, 카테고리를 직접 관리할 수 있도록 했어요.</p></div>
@@ -221,6 +233,19 @@ const TYPE_LABELS={
 const localDate=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
 const dateKey=(year,month,day)=>`${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
 function calendarDateLabel(value){if(!value)return '날짜 없음';const [y,m,d]=value.split('-').map(Number);const date=new Date(y,m-1,d);return `${y}년 ${m}월 ${d}일 (${['일','월','화','수','목','금','토'][date.getDay()]})`}
+// ---- 날짜 순수 함수 (DOM과 무관, 'YYYY-MM-DD' 문자열 기준) ----
+const isLeapYear=y=>(y%4===0&&y%100!==0)||y%400===0;
+// 오늘의 기억: 월-일이 같고 연도가 더 이른 기록. 사람 정보(날짜가 자동 기록)와 집은 사건이 아니라 제외.
+// 오늘이 평년 02-28이면 02-29 기록도 포함. 반환: [{record,years}] 최근 연도 순.
+function memoriesOn(list,today){
+  const t=/^(\d{4})-(\d{2})-(\d{2})$/.exec(today||'');if(!t||!Array.isArray(list))return [];
+  const ty=Number(t[1]),md=t[2]+'-'+t[3],leapFallback=md==='02-28'&&!isLeapYear(ty);
+  return list.filter(r=>{
+    if(!r||r.type==='person'||(r.type==='place'&&r.placeKind==='home'))return false;
+    const d=/^(\d{4})-(\d{2}-\d{2})$/.exec(r.date||'');if(!d||Number(d[1])>=ty)return false;
+    return d[2]===md||(leapFallback&&d[2]==='02-29');
+  }).map(r=>({record:r,years:ty-Number(r.date.slice(0,4))})).sort((a,b)=>a.years-b.years||b.record.date.localeCompare(a.record.date)||(b.record.createdAt||0)-(a.record.createdAt||0));
+}
 let lastPersonCategory='';
 let records=[];let calendarMonth=new Date(new Date().getFullYear(),new Date().getMonth(),1);let calendarSelectedDate=localDate();let editingId=null;let activeView='all';let activeTag='';let archiveSettings={relationshipStart:'',headerPhrase:''};let categories=[];let personMode='timeline';
 const $=s=>document.querySelector(s);
@@ -760,10 +785,23 @@ $('#placeGoHome').addEventListener('click',()=>{
   selectPlace(h.id,{pan:false,scroll:true});
 });
 
+function renderTodayMemories(){
+  const box=$('#todayMemories');if(!box)return;
+  const found=memoriesOn(records,localDate());
+  if(!found.length){box.classList.add('hidden');box.innerHTML='';return}
+  const shown=found.slice(0,6);
+  box.innerHTML=`<h3>오늘의 기억</h3><div class="today-memory-list">${shown.map(({record:r,years})=>{const m=mediaItems(r).find(x=>x.mediaType!=='video');const u=m?safeMediaUrl(m.url):'';return `<div class="today-memory" role="button" tabindex="0" data-detail="${esc(r.id)}">${u?`<img src="${esc(u)}" alt="" loading="lazy">`:''}<div class="today-memory-text"><small>${years}년 전 오늘</small><strong>${esc(r.title)}</strong></div></div>`}).join('')}</div>${found.length>shown.length?`<p class="today-memories-more">외 ${found.length-shown.length}개</p>`:''}`;
+  box.classList.remove('hidden');
+}
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Enter'&&e.key!==' ')return;
+  const item=e.target.closest?.('.today-memory');
+  if(item&&e.target===item){e.preventDefault();openDetailModal(item.dataset.detail)}
+});
 function render(){const list=filteredRecords();$('#statRecords').textContent=records.length;$('#statPhotos').textContent=records.filter(r=>r.type==='photo'&&mediaItems(r).length).length;const start=archiveSettings.relationshipStart;const dayCount=start?Math.floor((new Date(localDate()+'T00:00:00')-new Date(start+'T00:00:00'))/86400000)+1:0;$('#relationshipDays').textContent=dayCount>0?dayCount.toLocaleString('ko-KR')+'일':'—';$('#relationshipLabel').textContent=start?'함께한 날':'연애 시작일 미등록';$('#resultCount').textContent=`${list.length}개의 기록`;$('#timeline').innerHTML=list.length?list.map(recordHtml).join(''):emptyHtml('아직 기록이 없어요','첫 번째 기억을 천천히 남겨보세요.');const photos=records.filter(r=>r.type==='photo'&&mediaItems(r).length&&(!$('#searchPhotos').value||searchText(r).includes($('#searchPhotos').value.toLowerCase()))&&(!$('#photoDate').value||r.date===$('#photoDate').value)).sort((a,b)=>(b.date||'').localeCompare(a.date||''));$('#photoCount').textContent=`사진 · 동영상 ${photos.length}개 기록`;$('#photoGrid').innerHTML=photos.length?photos.map(r=>{const first=mediaItems(r)[0];return `<article class="photo-card">${first.mediaType==='video'?`<video src="${esc(first.url)}" controls preload="metadata" playsinline aria-label="${esc(r.title)}"></video>`:`<img data-detail="${esc(r.id)}" src="${esc(first.url)}" alt="${esc(r.title)}" loading="lazy">`}${mediaItems(r).length>1?`<span class="media-count">+${mediaItems(r).length-1}개 미디어</span>`:''}<div class="photo-info"><strong data-detail="${esc(r.id)}">${esc(r.title)}</strong><small>${esc(r.date)}${r.place?' · '+esc(r.place):''}</small><div class="tags">${tagHtml(r)}</div></div><div class="photo-tools"><button class="iconbtn" data-edit="${esc(r.id)}">수정</button><button class="iconbtn" data-delete="${esc(r.id)}">삭제</button></div></article>`}).join(''):emptyHtml('사진이나 동영상이 아직 없어요','미디어를 올리고 그날의 이야기를 덧붙여 보세요.');const places=records.filter(r=>r.type==='place');
 renderPlaceList();
 renderPlacesMap();
-renderCategoryOptions();renderPersonView();renderCalendar();renderItemsView();}
+renderCategoryOptions();renderPersonView();renderCalendar();renderItemsView();renderTodayMemories();}
 const views={all:['전체 기록','함께한 순간과 그 사람에 대해 알게 된 것들을 모아두는 곳.'],calendar:['캘린더','날짜별로 기록을 모아보고, 그날의 기억을 다시 꺼내봐요.'],photos:['미디어','사진과 동영상을 모아보고, 각 미디어에 담긴 이야기를 확인해요.'],items:['소유물','편지와 선물, 커플템처럼 추억이 담긴 물건을 이미지로 모아봐요.'],person:['그 사람에 대해','좋아하는 것, 싫어하는 것 등 알아가는 과정을 기록해보세요.'],places:['장소와 음식','함께한 장소와 먹었던 음식, 다시 가고 싶은 곳.'],tags:['태그 모아보기','하나의 태그로 여러 날의 기억을 한 번에 찾아봐요.'],updates:['업데이트 로그','사이트에 추가되거나 개선된 기능을 확인해요.'],settings:['백업과 설정','소중한 기록을 내보내고 안전하게 보관해요.']};
 function applyHeaderPhrase(){const phrase=(archiveSettings.headerPhrase||'').trim();$('#headerCustomPhrase').textContent=phrase;$('#headerPhrase').value=archiveSettings.headerPhrase||''}
 function setSidebarCollapsed(collapsed){const app=$('#archiveApp');app.classList.toggle('sidebar-collapsed',collapsed);const toggle=$('#sidebarToggle');toggle.setAttribute('aria-expanded',String(!collapsed));toggle.setAttribute('aria-label',collapsed?'사이드바 펼치기':'사이드바 접기');toggle.title=collapsed?'사이드바 펼치기':'사이드바 접기';toggle.textContent=collapsed?'☰':'×'}
