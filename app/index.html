@@ -419,6 +419,7 @@ function renderPlacesMap(){
     placeMapInstance=L.map(host).setView([36.5,127.8],7);
     const tiles=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
       maxZoom:19,
+      referrerPolicy:'strict-origin',
       attribution:'&copy; OpenStreetMap contributors'
     }).addTo(placeMapInstance);
     tiles.on('tileerror',()=>{placeTileErrors++;if(placeTileErrors>=3)$('#placeMapNotice').textContent='지도 타일을 불러오지 못하고 있어요. 인터넷 연결을 확인해 주세요. 장소 목록과 마커 정보는 그대로 볼 수 있어요.'});
