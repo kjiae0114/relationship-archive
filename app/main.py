@@ -390,7 +390,8 @@ def delete_category(category_id: int, request: Request):
     return {"ok": True}
 
 
-PLACE_KINDS = ("visit", "home")
+# visit=가 본 곳, home=우리 집(하나뿐), wish=아직 안 가 본 가고 싶은 곳(여러 개 가능)
+PLACE_KINDS = ("visit", "home", "wish")
 
 
 def place_category_fields(body: "PlaceCategoryBody") -> tuple[str, str]:

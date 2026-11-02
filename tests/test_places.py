@@ -170,6 +170,39 @@ def test_unknown_place_kind_is_rejected_and_data_kept(client, kind):
     assert [item["id"] for item in client.get("/api/records").json()["records"]] == ["keep"]
 
 
+def test_wish_kind_round_trip(client):
+    assert put(client, record(id="w", placeKind="wish", title="가 보고 싶은 카페")).status_code == 200
+    item = client.get("/api/records").json()["records"][0]
+    assert item["placeKind"] == "wish" and item["title"] == "가 보고 싶은 카페"
+
+
+def test_many_wishes_are_allowed_next_to_one_home(client):
+    assert put(client,
+               record(id="h", placeKind="home"),
+               record(id="w1", placeKind="wish"),
+               record(id="w2", placeKind="wish"),
+               record(id="w3", placeKind="wish"),
+               record(id="v", placeKind="visit")).status_code == 200
+    kinds = {item["id"]: item["placeKind"] for item in client.get("/api/records").json()["records"]}
+    assert kinds == {"h": "home", "w1": "wish", "w2": "wish", "w3": "wish", "v": "visit"}
+
+
+def test_wish_does_not_loosen_the_single_home_rule(client):
+    assert put(client, record(id="keep", placeKind="home")).status_code == 200
+    response = put(client,
+                   record(id="h1", placeKind="home"),
+                   record(id="w", placeKind="wish"),
+                   record(id="h2", placeKind="home"))
+    assert response.status_code == 422
+    assert [item["id"] for item in client.get("/api/records").json()["records"]] == ["keep"]
+
+
+def test_wish_kind_is_case_sensitive(client):
+    assert put(client, record(id="keep")).status_code == 200
+    assert put(client, record(id="new", placeKind="Wish")).status_code == 422
+    assert [item["id"] for item in client.get("/api/records").json()["records"]] == ["keep"]
+
+
 def test_missing_place_kind_defaults_to_visit(client):
     assert put(client, record()).status_code == 200
     assert client.get("/api/records").json()["records"][0]["placeKind"] == "visit"
