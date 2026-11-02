@@ -71,6 +71,18 @@
 .today-memory-text small{display:block;color:var(--accent);font-size:11px}
 .today-memory-text strong{display:block;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .today-memories-more{margin:8px 0 0;font-size:12px;color:var(--muted)}
+/* 장소별 추억 모아보기 */
+.place-photo[data-detail]{cursor:pointer}
+.place-memories-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.place-memories-head .btn{padding:6px 10px;font-size:12px}
+.place-memories{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:6px}
+.place-memory{display:flex;gap:10px;align-items:flex-start;min-width:0;padding:8px;border:1px solid var(--line);border-radius:10px;background:var(--panel2);cursor:pointer}
+.place-memory:hover{border-color:#6d647d}
+.place-memory-thumb{width:48px;height:48px;flex:0 0 48px;object-fit:cover;border-radius:8px;background:#2c2a32}
+.place-memory-text{min-width:0}
+.place-memory-text small{display:block;color:var(--muted);font-size:11px}
+.place-memory-text strong{display:block;font-size:13px;overflow-wrap:anywhere}
+.place-memory-text span{display:block;font-size:12px;color:#c5c2ce;overflow-wrap:anywhere}
 /* 기념일과 디데이 */
 .upcoming-days{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 22px}
 .upcoming-chip{display:inline-flex;align-items:center;gap:8px;max-width:100%;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:7px 14px;font-size:13px}
@@ -175,7 +187,7 @@
   <section id="view-tags" class="hidden"><div class="section-head"><h3>태그로 기억 찾기</h3><span>태그를 누르면 관련 기록을 모아봐요</span></div><div id="tagCloud" class="tags" style="gap:9px"></div><div class="section-head"><h3 id="tagResultTitle">모든 태그</h3></div><div class="record-list" id="tagResults"></div></section>
   <section id="view-updates" class="hidden">
     <div class="info-card" style="margin-bottom:12px"><div class="meta">NFA · CHANGELOG</div><h4>업데이트 로그</h4><p>사이트에 추가되거나 개선된 기능을 기록해 두는 곳이에요.</p></div>
-    <div class="info-card" style="margin-bottom:10px"><div class="meta">2026.11.02 · 분류</div><h4>가고 싶은 곳 구분</h4><p>장소를 추가할 때 ‘아직 안 가 본 곳이에요’를 체크하면 가고 싶은 곳으로 저장돼요. 지도에서는 흰 바탕에 점선 테두리와 ☆ 표시로 구분하고, 장소 화면 위쪽에서 ‘가 본 곳 / 가고 싶은 곳’만 모아 볼 수 있어요. 다녀온 뒤에는 ‘가 봤어요’를 눌러 방문한 날을 정해 저장하면 가 본 곳으로 바뀌어요.</p></div><div class="info-card" style="margin-bottom:10px"><div class="meta">2026.11.02 · 분류</div><h4>기념일과 디데이</h4><p>백업과 설정에서 기념일을 등록하면 전체 기록 화면에 가까운 순으로 D-day가 보이고, 캘린더 날짜에도 표시돼요. 연애 시작일을 등록해 두면 다음 100일 단위와 주년도 자동으로 계산해 알려줘요. 음력은 지원하지 않아요. JSON 백업에도 포함되고, 복원할 때는 기존 기념일을 지우지 않고 없는 것만 추가해요.</p></div><div class="info-card" style="margin-bottom:10px"><div class="meta">2026.11.02 · 분류</div><h4>오늘의 기억</h4><p>전체 기록 화면에서 예전 같은 날(월·일이 같은 날)에 남긴 기록을 ‘N년 전 오늘’로 모아 보여줘요. 그 사람에 대해 적은 정보와 우리 집은 제외하고, 해당하는 기록이 없으면 보이지 않아요.</p></div><div class="info-card" style="margin-bottom:10px"><div class="meta">2026.11.01 · 장소 지도</div><h4>함께한 장소 지도</h4><p>장소 기록에 유형, 주소, 좌표를 추가하고 지도에서 위치를 선택할 수 있도록 개선했어요. ‘우리 집’은 방문 장소와 구분되는 집 모양 표식으로 표시됩니다. 지도에는 좌표가 등록된 장소만 나타나요.</p></div><div class="info-card" style="margin-bottom:10px"><div class="meta">2026.10.27 · 기록 입력</div><h4>이전 카테고리 유지</h4><p>‘그 사람에 대해’에서 새 기록을 추가할 때 직전에 사용한 카테고리가 자동으로 선택되도록 개선했어요.</p></div>
+    <div class="info-card" style="margin-bottom:10px"><div class="meta">2026.11.02 · 분류</div><h4>장소별 추억 모아보기</h4><p>장소를 선택하면 그 장소와 연결된 기록이 날짜순 타임라인(‘이 장소의 추억’)으로 모여요. 기록의 ‘관련 장소’는 띄어쓰기와 대소문자가 달라도 연결되고, 일기를 쓸 때 저장된 장소 이름을 제안해 줘요. 장소 화면에서 ‘이 장소에 추억 남기기’로 바로 기록할 수 있고, 기록 상세의 장소 이름을 누르면 장소로 이동해요. 장소 이름을 바꾸면 연결된 기록의 장소도 함께 바뀌어요.</p></div><div class="info-card" style="margin-bottom:10px"><div class="meta">2026.11.02 · 분류</div><h4>가고 싶은 곳 구분</h4><p>장소를 추가할 때 ‘아직 안 가 본 곳이에요’를 체크하면 가고 싶은 곳으로 저장돼요. 지도에서는 흰 바탕에 점선 테두리와 ☆ 표시로 구분하고, 장소 화면 위쪽에서 ‘가 본 곳 / 가고 싶은 곳’만 모아 볼 수 있어요. 다녀온 뒤에는 ‘가 봤어요’를 눌러 방문한 날을 정해 저장하면 가 본 곳으로 바뀌어요.</p></div><div class="info-card" style="margin-bottom:10px"><div class="meta">2026.11.02 · 분류</div><h4>기념일과 디데이</h4><p>백업과 설정에서 기념일을 등록하면 전체 기록 화면에 가까운 순으로 D-day가 보이고, 캘린더 날짜에도 표시돼요. 연애 시작일을 등록해 두면 다음 100일 단위와 주년도 자동으로 계산해 알려줘요. 음력은 지원하지 않아요. JSON 백업에도 포함되고, 복원할 때는 기존 기념일을 지우지 않고 없는 것만 추가해요.</p></div><div class="info-card" style="margin-bottom:10px"><div class="meta">2026.11.02 · 분류</div><h4>오늘의 기억</h4><p>전체 기록 화면에서 예전 같은 날(월·일이 같은 날)에 남긴 기록을 ‘N년 전 오늘’로 모아 보여줘요. 그 사람에 대해 적은 정보와 우리 집은 제외하고, 해당하는 기록이 없으면 보이지 않아요.</p></div><div class="info-card" style="margin-bottom:10px"><div class="meta">2026.11.01 · 장소 지도</div><h4>함께한 장소 지도</h4><p>장소 기록에 유형, 주소, 좌표를 추가하고 지도에서 위치를 선택할 수 있도록 개선했어요. ‘우리 집’은 방문 장소와 구분되는 집 모양 표식으로 표시됩니다. 지도에는 좌표가 등록된 장소만 나타나요.</p></div><div class="info-card" style="margin-bottom:10px"><div class="meta">2026.10.27 · 기록 입력</div><h4>이전 카테고리 유지</h4><p>‘그 사람에 대해’에서 새 기록을 추가할 때 직전에 사용한 카테고리가 자동으로 선택되도록 개선했어요.</p></div>
     <div class="info-card" style="margin-bottom:10px"><div class="meta">2026.10.26 · 기록 관리</div><h4>캘린더 기능 추가</h4><p>날짜별 기록을 달력에서 확인하고, 원하는 날짜를 선택해 해당 일자의 기록을 살펴볼 수 있도록 했어요.</p></div>
     <div class="info-card" style="margin-bottom:10px"><div class="meta">2026.10.25 · 기록 입력</div><h4>‘그 사람에 대해’ 입력 항목 간소화</h4><p>기억할 내용과 분류, 기억의 확실성을 중심으로 입력하도록 정리했어요. 날짜는 자동으로 기록하고 입력 화면에서는 숨겨요.</p></div><div class="info-card" style="margin-bottom:10px"><div class="meta">2026.10.25 · UI</div><h4>업데이트 로그 메뉴 추가</h4><p>사이드 메뉴에서 업데이트 내역을 한곳에 모아 확인할 수 있도록 했어요.</p></div>
     <div class="info-card" style="margin-bottom:10px"><div class="meta">2026.10.24 · 기록 관리</div><h4>‘그 사람에 대해’ 보기 개선</h4><p>전체 타임라인과 카테고리별 보기를 추가하고, 카테고리를 직접 관리할 수 있도록 했어요.</p></div>
@@ -233,7 +245,7 @@
     </div>
     <span class="hint">주소를 검색해 후보를 고르면 좌표가 채워져요. 검색어는 외부 지도 서비스(OpenStreetMap 또는 카카오)로 전달돼요. 지도에서 위치를 찍거나 좌표를 직접 입력해도 돼요.</span>
   </div>
-  <div class="field full" id="placeField"><label for="place">관련 장소 (선택)</label><input id="place" name="place" placeholder="예: 한강공원, 작은 카페"></div>
+  <div class="field full" id="placeField"><label for="place">관련 장소 (선택)</label><input id="place" name="place" list="placeSuggestions" placeholder="예: 한강공원, 작은 카페" autocomplete="off"><datalist id="placeSuggestions"></datalist><span class="hint">저장해 둔 장소 이름을 고르면 그 장소에 추억이 모여요. (띄어쓰기와 대소문자는 구분하지 않아요)</span></div>
 </div><div class="modal-foot"><button type="button" class="btn" id="cancelModal">취소</button><button type="submit" class="btn primary">저장하기</button></div></form></div></div>
 <div class="modal-backdrop hidden" id="detailBackdrop" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
   <div class="modal detail-modal">
@@ -324,6 +336,36 @@ function anniversariesOn(list,key){
   });
 }
 const dDayLabel=days=>days===0?'D-DAY':days>0?`D-${days}`:`D+${-days}`;
+// ---- 장소 연결 순수 함수 (기록의 place 문자열 ↔ 저장된 장소의 제목/주소) ----
+// 비교 기준: 공백 정리 + 소문자
+const placeKey=s=>String(s??'').normalize('NFC').replace(/\s+/g,' ').trim().toLowerCase();
+// 장소 p의 제목 또는 주소와 같은 place를 가진 다른(장소가 아닌) 기록, 날짜 내림차순
+function relatedRecordsIn(list,p){
+  const keys=[placeKey(p.title),placeKey(p.address)].filter(Boolean);
+  return list.filter(x=>x.id!==p.id&&x.type!=='place'&&keys.includes(placeKey(x.place))).sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.createdAt||0)-(a.createdAt||0));
+}
+// 기록의 place 문자열과 연결되는 저장된 장소(제목 일치 우선, 그다음 주소 일치). 없으면 null
+function linkedPlaceFor(placeText,list){
+  const key=placeKey(placeText);if(!key)return null;
+  const places=list.filter(x=>x.type==='place');
+  return places.find(x=>placeKey(x.title)===key)||places.find(x=>placeKey(x.address)===key)||null;
+}
+// 일기 입력 제안용: 저장된 장소 제목(집 포함, 가고 싶은 곳 제외, 중복 제거)
+function placeSuggestions(list){
+  const seen=new Set(),out=[];
+  list.forEach(x=>{if(x.type!=='place'||x.placeKind==='wish')return;const k=placeKey(x.title);if(!k||seen.has(k))return;seen.add(k);out.push(String(x.title).trim())});
+  return out.sort((a,b)=>a.localeCompare(b,'ko'));
+}
+// 장소 제목을 바꾸면 옛 제목으로 연결돼 있던 다른 기록의 place를 새 제목으로 함께 바꾼다. 반환: {list,count}
+// 옛 제목이 다른 장소의 제목/주소이기도 하면 그 장소의 기록일 수 있어 바꾸지 않는다.
+function relinkPlaceTitle(list,oldPlace,newPlace,now){
+  const oldKey=placeKey(oldPlace.title);
+  if(!oldKey||oldKey===placeKey(newPlace.title)||oldKey===placeKey(newPlace.address))return {list,count:0};
+  if(list.some(x=>x.type==='place'&&x.id!==oldPlace.id&&(placeKey(x.title)===oldKey||placeKey(x.address)===oldKey)))return {list,count:0};
+  let count=0;
+  const out=list.map(x=>{if(x.id===oldPlace.id||x.type==='place'||placeKey(x.place)!==oldKey)return x;count++;return {...x,place:newPlace.title,updatedAt:now}});
+  return {list:out,count};
+}
 let lastPersonCategory='';
 let records=[];let calendarMonth=new Date(new Date().getFullYear(),new Date().getMonth(),1);let calendarSelectedDate=localDate();let editingId=null;let activeView='all';let activeTag='';let archiveSettings={relationshipStart:'',headerPhrase:''};let categories=[];let personMode='timeline';
 const $=s=>document.querySelector(s);
@@ -393,8 +435,9 @@ function openDetailModal(id){
   detailId=id;
   const media=mediaItems(r).map((item,index)=>item.mediaType==='video'?`<video class="detail-media" src="${esc(item.url)}" controls preload="metadata" playsinline aria-label="${esc(r.title)} 동영상 ${index+1}"></video>`:`<img class="detail-media" src="${esc(item.url)}" alt="${esc(r.title)} · 미디어 ${index+1}" loading="lazy">`).join('');
   const tags=tagsOf(r).length?`<div class="detail-tags">${tagHtml(r)}</div>`:'';
+  const linkedPlace=r.place?linkedPlaceFor(r.place,records.filter(x=>x.id!==r.id)):null; // 자기 자신은 제외
   $('#detailTitle').textContent='기록 상세';
-  $('#detailBody').innerHTML=`${media}<div class="detail-meta">${esc(r.date||'날짜 없음')} · ${esc(TYPE_LABELS[r.type]||'기록')}${r.category?' · '+esc(r.category):''}${r.certainty?' · '+esc(r.certainty):''}</div><h2 class="detail-title">${esc(r.title)}</h2>${r.body?`<div class="detail-content">${esc(r.body)}</div>`:''}${r.place?`<div class="detail-meta">⌖ ${esc(r.place)}</div>`:''}${tags}`;
+  $('#detailBody').innerHTML=`${media}<div class="detail-meta">${esc(r.date||'날짜 없음')} · ${esc(TYPE_LABELS[r.type]||'기록')}${r.category?' · '+esc(r.category):''}${r.certainty?' · '+esc(r.certainty):''}</div><h2 class="detail-title">${esc(r.title)}</h2>${r.body?`<div class="detail-content">${esc(r.body)}</div>`:''}${r.place?`<div class="detail-meta">⌖ ${linkedPlace?`<button type="button" class="place-related-btn" data-place-go="${esc(linkedPlace.id)}" title="장소 보기">${esc(r.place)}</button>`:esc(r.place)}</div>`:''}${tags}`;
   $('#detailEdit').dataset.edit=r.id;$('#detailDelete').dataset.delete=r.id;
   $('#detailBackdrop').classList.remove('hidden');
 }
@@ -569,14 +612,18 @@ function pinPlaceFirst(id){
   else ids.forEach(i=>grid.appendChild(cards.get(i)));
   grid.scrollTop=0;
 }
-function relatedRecordsOf(p){
-  const keys=[trimText(p.title),trimText(p.address)].filter(Boolean);
-  return records.filter(x=>x.id!==p.id&&x.type!=='place'&&keys.includes(trimText(x.place))).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-}
+function relatedRecordsOf(p){return relatedRecordsIn(records,p)}
+// 사진 격자용: [{url,recordId}] (장소 자신의 사진은 recordId=null)
 function placePhotoUrls(p,related){
-  const urls=[];
-  [p,...related].forEach(x=>mediaItems(x).forEach(m=>{if(m.mediaType==='video')return;const u=safeMediaUrl(m.url);if(u&&!urls.includes(u))urls.push(u)}));
-  return urls;
+  const out=[];
+  [p,...related].forEach(x=>mediaItems(x).forEach(m=>{if(m.mediaType==='video')return;const u=safeMediaUrl(m.url);if(u&&!out.some(o=>o.url===u))out.push({url:u,recordId:x.id===p.id?null:x.id})}));
+  return out;
+}
+// 상세 패널 타임라인 한 줄: 썸네일(첫 사진) · 날짜 · 종류 · 제목 · 본문 앞 60자
+function placeMemoryHtml(x){
+  const m=mediaItems(x).find(i=>i.mediaType!=='video');const u=m?safeMediaUrl(m.url):'';
+  const text=trimText(x.body).replace(/\s+/g,' ');const chars=Array.from(text);const snippet=chars.length>60?chars.slice(0,60).join('')+'…':text;
+  return `<li class="place-memory" role="button" tabindex="0" data-detail="${esc(x.id)}">${u?`<img class="place-memory-thumb" src="${esc(u)}" alt="" loading="lazy">`:'<span class="place-memory-thumb" aria-hidden="true"></span>'}<div class="place-memory-text"><small>${esc(x.date||'날짜 없음')} · ${esc(TYPE_LABELS[x.type]||'기록')}</small><strong>${esc(x.title)}</strong>${snippet?`<span>${esc(snippet)}</span>`:''}</div></li>`;
 }
 function placeKindLabel(r){return r.placeKind==='home'?'⌂ 우리 집':r.placeKind==='wish'?'☆ 가고 싶은 곳':'⌖ 방문 장소'}
 function placeDetailHtml(r,full){
@@ -584,10 +631,22 @@ function placeDetailHtml(r,full){
   const photos=placePhotoUrls(r,related).slice(0,full?12:3);
   const shown=full?related:related.slice(0,5);
   const coords=placeCoords(r);
-  const photoHtml=photos.length?`<div class="place-photos">${photos.map(u=>`<img class="place-photo" src="${esc(u)}" alt="${esc(r.title)}" loading="lazy">`).join('')}</div>`:'';
-  const relatedHtml=related.length
-    ?`<hr><strong>관련 기록 ${related.length}개</strong><ul class="place-related">${shown.map(x=>`<li>${full?`<button type="button" class="place-related-btn" data-detail="${esc(x.id)}">${esc(x.date||'날짜 없음')} · ${esc(x.title)}</button>`:`${esc(x.date||'날짜 없음')} · ${esc(x.title)}`}</li>`).join('')}</ul>${!full&&related.length>shown.length?`<small>나머지 ${related.length-shown.length}개는 지도 아래 장소 정보에서 볼 수 있어요.</small>`:''}`
-    :'<hr><small>이 장소와 연결된 기록이 아직 없어요. 기록의 ‘장소’에 이 장소의 이름이나 주소를 적으면 모여요.</small>';
+  // 큰 상세(full)에서만 사진을 누르면 그 사진이 속한 기록 상세로 간다(장소 자신의 사진, 팝업은 동작 없음).
+  const photoHtml=photos.length?`<div class="place-photos">${photos.map(({url,recordId})=>`<img class="place-photo" src="${esc(url)}" alt="${esc(r.title)}"${full&&recordId?` data-detail="${esc(recordId)}"`:''} loading="lazy">`).join('')}</div>`:'';
+  const hint='기록의 ‘관련 장소’에 이 장소의 이름이나 주소를 적으면 모여요. (띄어쓰기와 대소문자는 구분하지 않아요)';
+  const memoryBtn=full&&r.placeKind!=='wish'?`<button type="button" class="btn" data-place-memory="${esc(r.id)}">이 장소에 추억 남기기</button>`:'';
+  let relatedHtml;
+  if(full){
+    relatedHtml=related.length
+      ?`<hr><div class="place-memories-head"><strong>이 장소의 추억 ${related.length}개</strong>${memoryBtn}</div><ul class="place-memories">${related.map(placeMemoryHtml).join('')}</ul>`
+      :r.placeKind==='wish'
+        ?'<hr><small>아직 가 보지 못한 곳이에요. 다녀온 뒤 ‘가 봤어요’를 누르면 가 본 곳으로 바꿀 수 있어요.</small>'
+        :`<hr><div class="place-memories-head"><small>이 장소의 추억이 아직 없어요. ${hint}</small>${memoryBtn}</div>`;
+  }else{
+    relatedHtml=related.length
+      ?`<hr><strong>관련 기록 ${related.length}개</strong><ul class="place-related">${shown.map(x=>`<li>${esc(x.date||'날짜 없음')} · ${esc(x.title)}</li>`).join('')}</ul>${related.length>shown.length?`<small>나머지 ${related.length-shown.length}개는 지도 아래 장소 정보에서 볼 수 있어요.</small>`:''}`
+      :`<hr><small>이 장소와 연결된 기록이 아직 없어요. ${hint}</small>`;
+  }
   const body=trimText(r.body);
   return `<strong>${esc(placeKindLabel(r))} · ${esc(r.title)}</strong>`
     +(r.address&&(full||r.placeKind!=='home')?`<div class="place-address">${esc(r.address)}</div>`:'')
@@ -599,7 +658,7 @@ function placeDetailHtml(r,full){
 }
 function placeCardHtml(r){
   const related=relatedRecordsOf(r);
-  const own=placePhotoUrls(r,[])[0];
+  const own=placePhotoUrls(r,[])[0]?.url;
   return `<article class="info-card place-card ${activePlaceId===r.id?'is-active':''}" data-place-select="${esc(r.id)}" tabindex="0"><div class="meta">${esc(placeKindLabel(r))} · ${esc(r.date||'날짜 없음')}</div>${placeCategoryBadge(r)}${own?`<img class="place-photo place-card-photo" src="${esc(own)}" alt="${esc(r.title)}" loading="lazy">`:''}<h4>${esc(r.title)}</h4>${r.address?`<div class="place-address">${esc(r.address)}</div>`:''}${placeCoords(r)?'':'<div class="place-nocoord">좌표 없음 · 지도에 표시되지 않아요</div>'}<p>${esc(r.body||'')}${r.place?'\n⌖ '+esc(r.place):''}</p>${related.length?`<div class="place-address">관련 기록 ${related.length}개</div>`:''}<div class="tags">${tagHtml(r)}</div><div style="text-align:right;margin-top:10px">${r.placeKind==='wish'?`<button class="iconbtn" data-place-visited="${esc(r.id)}">가 봤어요</button>`:''}<button class="iconbtn" data-edit="${esc(r.id)}">수정</button><button class="iconbtn" data-delete="${esc(r.id)}">삭제</button></div></article>`;
 }
 function placeIcon(r,active){
@@ -651,19 +710,34 @@ function selectPlace(id,{pan=true,popup=true,scroll=false,list=true}={}){
 function focusSavedPlace(id){
   const r=records.find(x=>x.id===id&&x.type==='place');
   if(!r||!placeCoords(r))return;
-  // 검색 필터에 가려지면 방금 저장한 마커가 안 보이므로 검색어를 지운다.
-  // 카테고리/유형 필터에 가려져도 마찬가지로 필터를 '전체'로 되돌린다.
-  if(!placeMatches(r)||!placeMarkerVisible(r)){
-    if(!placeCategoryMatches(r))placeCategoryFilter='all';
-    if(!placeKindMatches(r))placeKindFilter='all';
-    if(!placeSearchMatches(r))$('#placeSearch').value='';
-    updatePlaceSearch();
-  }
+  showPlace(id);
+}
+// 장소 r이 검색/유형/카테고리 필터에 가려지면(목록 또는 마커) 가린 필터를 풀어 보이게 한다.
+// 검색에 가려지면 방금 저장한 마커가 안 보이므로 검색어를 지우고, 카테고리/유형에 가려져도 '전체'로 되돌린다.
+function revealPlaceInFilters(r){
+  if(placeMatches(r)&&placeMarkerVisible(r))return;
+  if(!placeCategoryMatches(r))placeCategoryFilter='all';
+  if(!placeKindMatches(r))placeKindFilter='all';
+  if(!placeSearchMatches(r))$('#placeSearch').value='';
+  updatePlaceSearch();
+}
+// 장소 화면으로 이동해 장소를 선택한다(좌표가 없는 장소도 상세는 열린다).
+function showPlace(id){
+  const r=records.find(x=>x.id===id&&x.type==='place');
+  if(!r)return;
+  revealPlaceInFilters(r);
   const wasHidden=activeView!=='places';
   activePlaceId=id;
   if(wasHidden)switchView('places');
   const go=()=>{if(placeMapInstance)placeMapInstance.invalidateSize();selectPlace(id,{scroll:true})};
   if(wasHidden)setTimeout(go,200);else go();
+}
+// 기록 상세의 ⌖ 장소 버튼: 모달을 닫고 연결된 장소로 이동
+function goToPlace(id){closeDetailModal();showPlace(id)}
+// ‘이 장소에 추억 남기기’: 일기 모달을 열고 관련 장소에 장소 제목을 채운다. 저장 후엔 render()가 상세 패널을 갱신한다.
+function startPlaceMemory(id){
+  const r=records.find(x=>x.id===id&&x.type==='place'&&x.placeKind!=='wish');if(!r)return;
+  openModal('diary');$('#place').value=r.title;
 }
 // 가고 싶은 곳 → 다녀옴: 수정 모달을 열어 ‘가고 싶은 곳’을 풀고 날짜를 오늘로 채운다. 저장은 사용자가 직접 한다.
 function markPlaceVisited(id){
@@ -746,7 +820,7 @@ document.addEventListener('click',e=>{
     $('#placeMapStatus').textContent='지도에서 위치를 선택하는 중';
     return;
   }
-  if(e.target.closest('[data-edit],[data-delete],[data-detail],[data-place-visited]'))return;
+  if(e.target.closest('[data-edit],[data-delete],[data-detail],[data-place-visited],[data-place-memory],[data-place-go]'))return;
   const place=e.target.closest('[data-place-select]');
   if(place)selectPlace(place.dataset.placeSelect,{scroll:true});
 });
@@ -972,6 +1046,10 @@ async function importAnniversaries(list){
   renderAnniversaryUi();
   return result;
 }
+function renderPlaceSuggestions(){
+  const dl=$('#placeSuggestions');if(!dl)return;
+  dl.innerHTML=placeSuggestions(records).map(t=>`<option value="${esc(t)}"></option>`).join('');
+}
 function renderTodayMemories(){
   const box=$('#todayMemories');if(!box)return;
   const found=memoriesOn(records,localDate());
@@ -982,26 +1060,28 @@ function renderTodayMemories(){
 }
 document.addEventListener('keydown',e=>{
   if(e.key!=='Enter'&&e.key!==' ')return;
-  const item=e.target.closest?.('.today-memory');
+  const item=e.target.closest?.('.today-memory,.place-memory');
   if(item&&e.target===item){e.preventDefault();openDetailModal(item.dataset.detail)}
 });
 function render(){const list=filteredRecords();$('#statRecords').textContent=records.length;$('#statPhotos').textContent=records.filter(r=>r.type==='photo'&&mediaItems(r).length).length;const start=archiveSettings.relationshipStart;const dayCount=start?Math.floor((new Date(localDate()+'T00:00:00')-new Date(start+'T00:00:00'))/86400000)+1:0;$('#relationshipDays').textContent=dayCount>0?dayCount.toLocaleString('ko-KR')+'일':'—';$('#relationshipLabel').textContent=start?'함께한 날':'연애 시작일 미등록';$('#resultCount').textContent=`${list.length}개의 기록`;$('#timeline').innerHTML=list.length?list.map(recordHtml).join(''):emptyHtml('아직 기록이 없어요','첫 번째 기억을 천천히 남겨보세요.');const photos=records.filter(r=>r.type==='photo'&&mediaItems(r).length&&(!$('#searchPhotos').value||searchText(r).includes($('#searchPhotos').value.toLowerCase()))&&(!$('#photoDate').value||r.date===$('#photoDate').value)).sort((a,b)=>(b.date||'').localeCompare(a.date||''));$('#photoCount').textContent=`사진 · 동영상 ${photos.length}개 기록`;$('#photoGrid').innerHTML=photos.length?photos.map(r=>{const first=mediaItems(r)[0];return `<article class="photo-card">${first.mediaType==='video'?`<video src="${esc(first.url)}" controls preload="metadata" playsinline aria-label="${esc(r.title)}"></video>`:`<img data-detail="${esc(r.id)}" src="${esc(first.url)}" alt="${esc(r.title)}" loading="lazy">`}${mediaItems(r).length>1?`<span class="media-count">+${mediaItems(r).length-1}개 미디어</span>`:''}<div class="photo-info"><strong data-detail="${esc(r.id)}">${esc(r.title)}</strong><small>${esc(r.date)}${r.place?' · '+esc(r.place):''}</small><div class="tags">${tagHtml(r)}</div></div><div class="photo-tools"><button class="iconbtn" data-edit="${esc(r.id)}">수정</button><button class="iconbtn" data-delete="${esc(r.id)}">삭제</button></div></article>`}).join(''):emptyHtml('사진이나 동영상이 아직 없어요','미디어를 올리고 그날의 이야기를 덧붙여 보세요.');const places=records.filter(r=>r.type==='place');
 renderPlaceList();
 renderPlacesMap();
-renderCategoryOptions();renderPersonView();renderCalendar();renderItemsView();renderUpcomingDays();renderTodayMemories();}
+renderCategoryOptions();renderPersonView();renderCalendar();renderItemsView();renderUpcomingDays();renderTodayMemories();renderPlaceSuggestions();}
 const views={all:['전체 기록','함께한 순간과 그 사람에 대해 알게 된 것들을 모아두는 곳.'],calendar:['캘린더','날짜별로 기록을 모아보고, 그날의 기억을 다시 꺼내봐요.'],photos:['미디어','사진과 동영상을 모아보고, 각 미디어에 담긴 이야기를 확인해요.'],items:['소유물','편지와 선물, 커플템처럼 추억이 담긴 물건을 이미지로 모아봐요.'],person:['그 사람에 대해','좋아하는 것, 싫어하는 것 등 알아가는 과정을 기록해보세요.'],places:['장소와 음식','함께한 장소와 먹었던 음식, 다시 가고 싶은 곳.'],tags:['태그 모아보기','하나의 태그로 여러 날의 기억을 한 번에 찾아봐요.'],updates:['업데이트 로그','사이트에 추가되거나 개선된 기능을 확인해요.'],settings:['백업과 설정','소중한 기록을 내보내고 안전하게 보관해요.']};
 function applyHeaderPhrase(){const phrase=(archiveSettings.headerPhrase||'').trim();$('#headerCustomPhrase').textContent=phrase;$('#headerPhrase').value=archiveSettings.headerPhrase||''}
 function setSidebarCollapsed(collapsed){const app=$('#archiveApp');app.classList.toggle('sidebar-collapsed',collapsed);const toggle=$('#sidebarToggle');toggle.setAttribute('aria-expanded',String(!collapsed));toggle.setAttribute('aria-label',collapsed?'사이드바 펼치기':'사이드바 접기');toggle.title=collapsed?'사이드바 펼치기':'사이드바 접기';toggle.textContent=collapsed?'☰':'×'}
 $('#sidebarToggle').addEventListener('click',()=>setSidebarCollapsed(!$('#archiveApp').classList.contains('sidebar-collapsed')));$('#sidebarBackdrop').addEventListener('click',()=>setSidebarCollapsed(true));
 function switchView(v){if(v==='calendar')renderCalendar();if(window.matchMedia('(max-width: 650px)').matches)setSidebarCollapsed(true);activeView=v;document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===v));Object.keys(views).forEach(k=>$('#view-'+k).classList.toggle('hidden',k!==v));$('#pageTitle').textContent=views[v][0];$('#pageSub').textContent=views[v][1];$('#eyebrow').textContent=v==='settings'?'DATA & PRIVACY':'YOUR PRIVATE ARCHIVE';$('#addRecord').textContent=v==='photos'?'＋ 미디어 추가':v==='items'?'＋ 소유물 추가':v==='person'?'＋ 정보 추가':v==='places'?'＋ 장소 추가':'＋ 기록 추가';if(v==='person')renderPersonView();if(v==='settings')renderAnniversaryList();if(v==='places')setTimeout(()=>{renderPlacesMap();if(placeMapInstance)placeMapInstance.invalidateSize()},150);}
 async function uploadPhoto(file){if(!file)return null;const isVideo=file.type.startsWith('video/');if(!file.type.startsWith('image/')&&!isVideo)throw new Error('이미지 또는 동영상 파일만 올릴 수 있어요.');const limit=isVideo?200*1024*1024:15*1024*1024;if(file.size>limit)throw new Error(isVideo?'동영상은 200MB 이하로 올려주세요.':'사진은 15MB 이하로 올려주세요.');const fd=new FormData();fd.append('file',file);const out=await api('/photos',{method:'POST',body:fd});return {url:out.url,mediaType:isVideo?'video':'image'}}
-$('#recordForm').addEventListener('submit',async e=>{e.preventDefault();if(!ensureLoaded())return;const t=$('#type').value;const files=[...$('#photoFile').files];const title=$('#title').value.trim();if(!title){toast('제목을 적어주세요.');return}const old=records.find(x=>x.id===editingId);const latText=$('#placeLat').value.trim();const lngText=$('#placeLng').value.trim();if(t==='place'&&(!!latText!==!!lngText)){toast('위도와 경도를 모두 입력하거나 둘 다 비워 주세요.');return}if(t==='place'&&latText&&(!Number.isFinite(Number(latText))||!Number.isFinite(Number(lngText))||Number(latText)<-90||Number(latText)>90||Number(lngText)<-180||Number(lngText)>180)){toast('위도 또는 경도 범위를 확인해 주세요.');return}const existingImages=mediaItems(old||{});if((t==='photo'||t==='item')&&!existingImages.length&&!files.length){toast('사진 또는 동영상 파일을 선택해 주세요.');return}let images=existingImages.map(m=>({url:m.url,mediaType:m.mediaType||'image'}));try{for(let i=0;i<files.length;i++){toast(files.length>1?`미디어 업로드 중… (${i+1}/${files.length})`:'미디어 업로드 중…');images.push(await uploadPhoto(files[i]));}}catch(err){toast(err.message);return}const primary=images[0]||null;const r={id:editingId||crypto.randomUUID?.()||String(Date.now()),type:t,date:t==='person'?(old?.date||localDate()):$('#date').value,title,body:$('#body').value.trim(),category:t==='place'?(old?(old.category||''):$('#category').value):$('#category').value,itemKind:t==='item'?$('#itemKind').value:(old?.itemKind||''),giver:t==='item'?$('#giver').value.trim():(old?.giver||''),certainty:$('#certainty').value,tags:t==='person'?(old?.tags||[]):normalizedTags($('#tags').value),place:t==='person'?(old?.place||''):$('#place').value.trim(),placeKind:t==='place'?($('#placeKind').checked?'home':$('#placeWish').checked?'wish':'visit'):(old?.placeKind||'visit'),placeCategoryId:placeCategoryIdToSave(t,old),address:t==='place'?$('#address').value.trim():(old?.address||''),latitude:t==='place'?(latText?Number(latText):null):(old?.latitude??null),longitude:t==='place'?(lngText?Number(lngText):null):(old?.longitude??null),images,image:primary?.url||null,mediaType:primary?.mediaType||null,createdAt:old?.createdAt||Date.now(),updatedAt:Date.now()};if(t==='person')lastPersonCategory=r.category;if(!r.title){toast('제목을 적어주세요.');return}if((t==='photo'||t==='item')&&!r.images.length){toast('사진 또는 동영상 파일을 선택해 주세요.');return}let demotedHome=false;if(t==='place'&&r.placeKind==='home'){const now=Date.now();records=records.map(x=>x.type==='place'&&x.placeKind==='home'&&x.id!==r.id?(demotedHome=true,{...x,placeKind:'visit',updatedAt:now}):x)}if(old)records=records.map(x=>x.id===old.id?r:x);else records.push(r);if(t==='place')pendingPlaceCoords=null;const placeMoved=t==='place'&&(!old||old.type!=='place'||(old.latitude??null)!==r.latitude||(old.longitude??null)!==r.longitude||old.placeKind!==r.placeKind||(old.placeCategoryId??null)!==(r.placeCategoryId??null));closeModal();closeDetailModal();render();if(placeMoved)focusSavedPlace(r.id);await persist();toast(demotedHome?`우리 집을 ${r.title}${josaRo(r.title)} 바꿨어요.`:(old?'기록을 수정했어요.':'기록을 저장했어요.'));});
+$('#recordForm').addEventListener('submit',async e=>{e.preventDefault();if(!ensureLoaded())return;const t=$('#type').value;const files=[...$('#photoFile').files];const title=$('#title').value.trim();if(!title){toast('제목을 적어주세요.');return}const old=records.find(x=>x.id===editingId);const latText=$('#placeLat').value.trim();const lngText=$('#placeLng').value.trim();if(t==='place'&&(!!latText!==!!lngText)){toast('위도와 경도를 모두 입력하거나 둘 다 비워 주세요.');return}if(t==='place'&&latText&&(!Number.isFinite(Number(latText))||!Number.isFinite(Number(lngText))||Number(latText)<-90||Number(latText)>90||Number(lngText)<-180||Number(lngText)>180)){toast('위도 또는 경도 범위를 확인해 주세요.');return}const existingImages=mediaItems(old||{});if((t==='photo'||t==='item')&&!existingImages.length&&!files.length){toast('사진 또는 동영상 파일을 선택해 주세요.');return}let images=existingImages.map(m=>({url:m.url,mediaType:m.mediaType||'image'}));try{for(let i=0;i<files.length;i++){toast(files.length>1?`미디어 업로드 중… (${i+1}/${files.length})`:'미디어 업로드 중…');images.push(await uploadPhoto(files[i]));}}catch(err){toast(err.message);return}const primary=images[0]||null;const r={id:editingId||crypto.randomUUID?.()||String(Date.now()),type:t,date:t==='person'?(old?.date||localDate()):$('#date').value,title,body:$('#body').value.trim(),category:t==='place'?(old?(old.category||''):$('#category').value):$('#category').value,itemKind:t==='item'?$('#itemKind').value:(old?.itemKind||''),giver:t==='item'?$('#giver').value.trim():(old?.giver||''),certainty:$('#certainty').value,tags:t==='person'?(old?.tags||[]):normalizedTags($('#tags').value),place:t==='person'?(old?.place||''):$('#place').value.trim(),placeKind:t==='place'?($('#placeKind').checked?'home':$('#placeWish').checked?'wish':'visit'):(old?.placeKind||'visit'),placeCategoryId:placeCategoryIdToSave(t,old),address:t==='place'?$('#address').value.trim():(old?.address||''),latitude:t==='place'?(latText?Number(latText):null):(old?.latitude??null),longitude:t==='place'?(lngText?Number(lngText):null):(old?.longitude??null),images,image:primary?.url||null,mediaType:primary?.mediaType||null,createdAt:old?.createdAt||Date.now(),updatedAt:Date.now()};if(t==='person')lastPersonCategory=r.category;if(!r.title){toast('제목을 적어주세요.');return}if((t==='photo'||t==='item')&&!r.images.length){toast('사진 또는 동영상 파일을 선택해 주세요.');return}let demotedHome=false;if(t==='place'&&r.placeKind==='home'){const now=Date.now();records=records.map(x=>x.type==='place'&&x.placeKind==='home'&&x.id!==r.id?(demotedHome=true,{...x,placeKind:'visit',updatedAt:now}):x)}let relinked=0;if(old&&old.type==='place'&&t==='place'){const out=relinkPlaceTitle(records,old,r,Date.now());records=out.list;relinked=out.count}if(old)records=records.map(x=>x.id===old.id?r:x);else records.push(r);if(t==='place')pendingPlaceCoords=null;const placeMoved=t==='place'&&(!old||old.type!=='place'||(old.latitude??null)!==r.latitude||(old.longitude??null)!==r.longitude||old.placeKind!==r.placeKind||(old.placeCategoryId??null)!==(r.placeCategoryId??null));closeModal();closeDetailModal();render();if(placeMoved)focusSavedPlace(r.id);await persist();toast((demotedHome?`우리 집을 ${r.title}${josaRo(r.title)} 바꿨어요.`:(old?'기록을 수정했어요.':'기록을 저장했어요.'))+(relinked?` 연결된 기록 ${relinked}개도 함께 바꿨어요.`:''));});
 async function deleteRecord(id){if(!ensureLoaded())return;const r=records.find(x=>x.id===id);if(!r||!confirm(`“${r.title}” 기록을 삭제할까요?`))return;records=records.filter(x=>x.id!==id);render();await persist();toast('기록을 삭제했어요.')}
 document.addEventListener('click',e=>{
   const nav=e.target.closest('[data-view]');if(nav){switchView(nav.dataset.view);return}
   const edit=e.target.closest('[data-edit]');if(edit){const r=records.find(x=>x.id===edit.dataset.edit);if(r){closeDetailModal();openModal(r.type,r.id)}return}
   const del=e.target.closest('[data-delete]');if(del){const id=del.dataset.delete;closeDetailModal();deleteRecord(id);return}
   const visited=e.target.closest('[data-place-visited]');if(visited){markPlaceVisited(visited.dataset.placeVisited);return}
+  const memory=e.target.closest('[data-place-memory]');if(memory){startPlaceMemory(memory.dataset.placeMemory);return}
+  const goPlace=e.target.closest('[data-place-go]');if(goPlace){goToPlace(goPlace.dataset.placeGo);return}
   const tag=e.target.closest('[data-tag]');if(tag){activeTag=tag.dataset.tag;closeDetailModal();switchView('tags');render();return}
   const date=e.target.closest('[data-date]');if(date){$('#filterDate').value=date.dataset.date;switchView('all');render();return}
   const detail=e.target.closest('[data-detail]');if(detail){openDetailModal(detail.dataset.detail);return}
