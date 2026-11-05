@@ -24,7 +24,8 @@ from typing import Any
 import boto3
 from botocore.client import Config
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field, StrictBool
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import IntegrityError
@@ -74,6 +75,41 @@ app.add_middleware(
     max_age=60 * 60 * 12,
     session_cookie="archive_session",
 )
+
+# pydantic 422 오류는 detail이 배열이라 화면에 "[object Object]"처럼 보였다.
+# 화면이 그대로 띄울 수 있는 한국어 한 문장으로 바꾼다. 입력값은 담지 않는다(비밀번호 등 노출 방지).
+VALIDATION_FIELD_LABELS = {
+    "password": "비밀번호", "records": "기록 목록", "relationshipStart": "연애 시작일",
+    "headerPhrase": "상단 문구", "name": "이름", "color": "색", "date": "날짜",
+    "repeatYearly": "매년 반복", "file": "파일",
+}
+
+
+def validation_reason(error_type: str) -> str:
+    if error_type == "missing":
+        return "값이 빠졌어요"
+    if error_type == "string_too_long" or error_type == "too_long":
+        return "너무 길어요"
+    if error_type == "string_too_short" or error_type == "too_short":
+        return "비어 있거나 너무 짧아요"
+    if error_type.startswith("json"):
+        return "요청 내용을 읽을 수 없어요"
+    return "형식이 올바르지 않아요"
+
+
+def validation_message(errors: list) -> str:
+    if not errors:
+        return "입력값을 확인해 주세요."
+    first = errors[0]
+    loc = [str(part) for part in first.get("loc", ()) if part not in ("body", "query", "path")]
+    field = next((VALIDATION_FIELD_LABELS[part] for part in reversed(loc) if part in VALIDATION_FIELD_LABELS), "")
+    reason = validation_reason(str(first.get("type", "")))
+    return f"입력값을 확인해 주세요: {field + ' ' if field else ''}{reason}."
+
+
+@app.exception_handler(RequestValidationError)
+async def request_validation_handler(request: Request, exc: RequestValidationError):
+    return JSONResponse(status_code=422, content={"detail": validation_message(exc.errors())})
 
 
 class LoginBody(BaseModel):
