@@ -24,11 +24,11 @@
 .place-coordinates{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .address-search-row{display:flex;gap:8px}.address-search-row input{flex:1;min-width:0}.address-search-row .btn{white-space:nowrap}.address-results{margin-top:8px;display:grid;gap:6px}.address-msg{margin:0;font-size:13px;color:var(--muted,#777)}.address-result{display:block;width:100%;text-align:left;padding:8px 10px;border:1px solid var(--line,#ddd);border-radius:10px;background:transparent;color:inherit;font:inherit;cursor:pointer}.address-result span{display:block;font-size:12px;opacity:.75}.address-result.is-selected{border-color:var(--accent,#c0507a);box-shadow:0 0 0 2px #c0507a33}
 .place-marker{display:grid;place-items:center;border:2px solid #fff;color:#21192f;font-weight:800;box-shadow:0 2px 8px #0009;transition:box-shadow .15s}
-.place-pin-marker{border-radius:50%;background:var(--accent);font-size:16px}
+.place-pin-marker,.place-wish-marker{display:block;border:0;border-radius:0;background:transparent;box-shadow:none;filter:drop-shadow(0 2px 3px rgba(0,0,0,.45));transition:filter .15s}
+.place-pin-marker svg,.place-wish-marker svg{display:block;width:100%;height:100%;overflow:visible}
+.place-pin-marker.is-active,.place-wish-marker.is-active{filter:drop-shadow(0 0 3px rgba(255,61,110,.85)) drop-shadow(0 3px 4px rgba(0,0,0,.5))}
 .place-house-marker{border-radius:12px;background:#ffd166;color:#3a2a00;border-width:3px;font-size:26px;box-shadow:0 0 0 4px #ffd16666,0 3px 12px #000a}
-.place-wish-marker{border:0;border-radius:50%;background:transparent;font-size:16px}
-.place-wish-marker .wish-fill{display:grid;place-items:center;width:100%;height:100%;border-radius:50%;background:#fff;border:2px dashed #8a8697}
-.place-marker.is-active{border-color:#ff6b8b;box-shadow:0 0 0 6px #ff6b8b88,0 4px 14px #000b}
+.place-house-marker.is-active{border-color:#ff6b8b;box-shadow:0 0 0 6px #ff6b8b88,0 4px 14px #000b}
 .place-map.is-picking{cursor:crosshair}
 .place-map.is-unavailable{display:grid;place-items:center;padding:20px;text-align:center;color:var(--muted);font-size:13px}
 .place-detail{margin-top:12px;overflow-wrap:anywhere;font-size:13px}
@@ -52,8 +52,6 @@
 .place-chip[aria-pressed=true]{border-color:var(--accent);background:#302a3e;color:#fff;font-weight:650}
 .place-chip i,.place-cat-badge i{display:inline-block;width:9px;height:9px;border-radius:50%;background:#8a8697}
 .place-cat-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#d1c1ff;background:#302a3e;border-radius:6px;padding:2px 7px;margin:4px 0 0}
-.place-pin-marker.has-cat{background:transparent}
-.place-pin-marker .pin-fill{display:grid;place-items:center;width:100%;height:100%;border-radius:50%}
 .place-category-manager{margin-bottom:12px}
 .place-category-manager .btn{margin-top:0}
 .pcat-row{display:grid;grid-template-columns:minmax(0,1fr) 44px auto;gap:8px;align-items:center}
@@ -187,7 +185,7 @@
   <section id="view-tags" class="hidden"><div class="section-head"><h3>태그로 기억 찾기</h3><span>태그를 누르면 관련 기록을 모아봐요</span></div><div id="tagCloud" class="tags" style="gap:9px"></div><div class="section-head"><h3 id="tagResultTitle">모든 태그</h3></div><div class="record-list" id="tagResults"></div></section>
   <section id="view-updates" class="hidden">
     <div class="info-card" style="margin-bottom:12px"><div class="meta">NFA · CHANGELOG</div><h4>업데이트 로그</h4><p>사이트에 추가되거나 개선된 기능을 기록해 두는 곳이에요.</p></div>
-    <div class="info-card" style="margin-bottom:10px"><div class="meta">2026.11.02 · 분류</div><h4>장소별 추억 모아보기</h4><p>장소를 선택하면 그 장소와 연결된 기록이 날짜순 타임라인(‘이 장소의 추억’)으로 모여요. 기록의 ‘관련 장소’는 띄어쓰기와 대소문자가 달라도 연결되고, 일기를 쓸 때 저장된 장소 이름을 제안해 줘요. 장소 화면에서 ‘이 장소에 추억 남기기’로 바로 기록할 수 있고, 기록 상세의 장소 이름을 누르면 장소로 이동해요. 장소 이름을 바꾸면 연결된 기록의 장소도 함께 바뀌어요.</p></div><div class="info-card" style="margin-bottom:10px"><div class="meta">2026.11.02 · 분류</div><h4>가고 싶은 곳 구분</h4><p>장소를 추가할 때 ‘아직 안 가 본 곳이에요’를 체크하면 가고 싶은 곳으로 저장돼요. 지도에서는 흰 바탕에 점선 테두리와 ☆ 표시로 구분하고, 장소 화면 위쪽에서 ‘가 본 곳 / 가고 싶은 곳’만 모아 볼 수 있어요. 다녀온 뒤에는 ‘가 봤어요’를 눌러 방문한 날을 정해 저장하면 가 본 곳으로 바뀌어요.</p></div><div class="info-card" style="margin-bottom:10px"><div class="meta">2026.11.02 · 분류</div><h4>기념일과 디데이</h4><p>백업과 설정에서 기념일을 등록하면 전체 기록 화면에 가까운 순으로 D-day가 보이고, 캘린더 날짜에도 표시돼요. 연애 시작일을 등록해 두면 다음 100일 단위와 주년도 자동으로 계산해 알려줘요. 음력은 지원하지 않아요. JSON 백업에도 포함되고, 복원할 때는 기존 기념일을 지우지 않고 없는 것만 추가해요.</p></div><div class="info-card" style="margin-bottom:10px"><div class="meta">2026.11.02 · 분류</div><h4>오늘의 기억</h4><p>전체 기록 화면에서 예전 같은 날(월·일이 같은 날)에 남긴 기록을 ‘N년 전 오늘’로 모아 보여줘요. 그 사람에 대해 적은 정보와 우리 집은 제외하고, 해당하는 기록이 없으면 보이지 않아요.</p></div><div class="info-card" style="margin-bottom:10px"><div class="meta">2026.11.01 · 장소 지도</div><h4>함께한 장소 지도</h4><p>장소 기록에 유형, 주소, 좌표를 추가하고 지도에서 위치를 선택할 수 있도록 개선했어요. ‘우리 집’은 방문 장소와 구분되는 집 모양 표식으로 표시됩니다. 지도에는 좌표가 등록된 장소만 나타나요.</p></div><div class="info-card" style="margin-bottom:10px"><div class="meta">2026.10.27 · 기록 입력</div><h4>이전 카테고리 유지</h4><p>‘그 사람에 대해’에서 새 기록을 추가할 때 직전에 사용한 카테고리가 자동으로 선택되도록 개선했어요.</p></div>
+    <div class="info-card" style="margin-bottom:10px"><div class="meta">2026.11.05 · 장소 지도</div><h4>더 잘 보이는 지도 핀</h4><p>지도의 장소 표시를 물방울 모양 핀으로 바꿨어요. 가 본 곳은 색이 채워진 핀, 가고 싶은 곳은 흰 바탕에 점선 테두리와 별 표시 핀으로 구분되고, 선택하면 더 크고 눈에 띄게 보여요.</p></div><div class="info-card" style="margin-bottom:10px"><div class="meta">2026.11.02 · 분류</div><h4>장소별 추억 모아보기</h4><p>장소를 선택하면 그 장소와 연결된 기록이 날짜순 타임라인(‘이 장소의 추억’)으로 모여요. 기록의 ‘관련 장소’는 띄어쓰기와 대소문자가 달라도 연결되고, 일기를 쓸 때 저장된 장소 이름을 제안해 줘요. 장소 화면에서 ‘이 장소에 추억 남기기’로 바로 기록할 수 있고, 기록 상세의 장소 이름을 누르면 장소로 이동해요. 장소 이름을 바꾸면 연결된 기록의 장소도 함께 바뀌어요.</p></div><div class="info-card" style="margin-bottom:10px"><div class="meta">2026.11.02 · 분류</div><h4>가고 싶은 곳 구분</h4><p>장소를 추가할 때 ‘아직 안 가 본 곳이에요’를 체크하면 가고 싶은 곳으로 저장돼요. 지도에서는 흰 바탕에 점선 테두리와 ☆ 표시로 구분하고, 장소 화면 위쪽에서 ‘가 본 곳 / 가고 싶은 곳’만 모아 볼 수 있어요. 다녀온 뒤에는 ‘가 봤어요’를 눌러 방문한 날을 정해 저장하면 가 본 곳으로 바뀌어요.</p></div><div class="info-card" style="margin-bottom:10px"><div class="meta">2026.11.02 · 분류</div><h4>기념일과 디데이</h4><p>백업과 설정에서 기념일을 등록하면 전체 기록 화면에 가까운 순으로 D-day가 보이고, 캘린더 날짜에도 표시돼요. 연애 시작일을 등록해 두면 다음 100일 단위와 주년도 자동으로 계산해 알려줘요. 음력은 지원하지 않아요. JSON 백업에도 포함되고, 복원할 때는 기존 기념일을 지우지 않고 없는 것만 추가해요.</p></div><div class="info-card" style="margin-bottom:10px"><div class="meta">2026.11.02 · 분류</div><h4>오늘의 기억</h4><p>전체 기록 화면에서 예전 같은 날(월·일이 같은 날)에 남긴 기록을 ‘N년 전 오늘’로 모아 보여줘요. 그 사람에 대해 적은 정보와 우리 집은 제외하고, 해당하는 기록이 없으면 보이지 않아요.</p></div><div class="info-card" style="margin-bottom:10px"><div class="meta">2026.11.01 · 장소 지도</div><h4>함께한 장소 지도</h4><p>장소 기록에 유형, 주소, 좌표를 추가하고 지도에서 위치를 선택할 수 있도록 개선했어요. ‘우리 집’은 방문 장소와 구분되는 집 모양 표식으로 표시됩니다. 지도에는 좌표가 등록된 장소만 나타나요.</p></div><div class="info-card" style="margin-bottom:10px"><div class="meta">2026.10.27 · 기록 입력</div><h4>이전 카테고리 유지</h4><p>‘그 사람에 대해’에서 새 기록을 추가할 때 직전에 사용한 카테고리가 자동으로 선택되도록 개선했어요.</p></div>
     <div class="info-card" style="margin-bottom:10px"><div class="meta">2026.10.26 · 기록 관리</div><h4>캘린더 기능 추가</h4><p>날짜별 기록을 달력에서 확인하고, 원하는 날짜를 선택해 해당 일자의 기록을 살펴볼 수 있도록 했어요.</p></div>
     <div class="info-card" style="margin-bottom:10px"><div class="meta">2026.10.25 · 기록 입력</div><h4>‘그 사람에 대해’ 입력 항목 간소화</h4><p>기억할 내용과 분류, 기억의 확실성을 중심으로 입력하도록 정리했어요. 날짜는 자동으로 기록하고 입력 화면에서는 숨겨요.</p></div><div class="info-card" style="margin-bottom:10px"><div class="meta">2026.10.25 · UI</div><h4>업데이트 로그 메뉴 추가</h4><p>사이드 메뉴에서 업데이트 내역을 한곳에 모아 확인할 수 있도록 했어요.</p></div>
     <div class="info-card" style="margin-bottom:10px"><div class="meta">2026.10.24 · 기록 관리</div><h4>‘그 사람에 대해’ 보기 개선</h4><p>전체 타임라인과 카테고리별 보기를 추가하고, 카테고리를 직접 관리할 수 있도록 했어요.</p></div>
@@ -663,13 +661,19 @@ function placeCardHtml(r){
 }
 function placeIcon(r,active){
   const home=r.placeKind==='home',wish=r.placeKind==='wish';
-  const col=home?'':safePlaceColor(placeCategoryOf(r)?.color); // 서버 검증을 통과했어도 style에 넣기 전에 다시 확인
-  const size=home?(active?56:44):(active?42:28);
-  const glyph=home
-    ?'<svg viewBox="0 0 24 24" width="72%" height="72%" aria-hidden="true"><path d="M12 3 2 12h3v9h5v-6h4v6h5v-9h3z" fill="currentColor"/></svg>'
-    :wish?`<span class="wish-fill"${col?` style="border-color:${col}"`:''}>☆</span>`  // 흰 바탕 + 점선 테두리(카테고리 색이 있으면 테두리 색)
-    :(col?`<span class="pin-fill" style="background:${col}">⌖</span>`:'<span>⌖</span>');
-  return L.divIcon({className:`place-marker ${home?'place-house-marker':wish?'place-wish-marker':'place-pin-marker'}${col?' has-cat':''}${active?' is-active':''}`,html:glyph,iconSize:[size,size],iconAnchor:[size/2,size/2],popupAnchor:[0,-size/2]});
+  const col=home?'':safePlaceColor(placeCategoryOf(r)?.color); // 서버 검증을 통과했어도 SVG 속성에 넣기 전에 다시 확인
+  const cls=`place-marker ${home?'place-house-marker':wish?'place-wish-marker':'place-pin-marker'}${col?' has-cat':''}${active?' is-active':''}`;
+  if(home){
+    const size=active?56:44;
+    return L.divIcon({className:cls,html:'<svg viewBox="0 0 24 24" width="72%" height="72%" aria-hidden="true"><path d="M12 3 2 12h3v9h5v-6h4v6h5v-9h3z" fill="currentColor"/></svg>',iconSize:[size,size],iconAnchor:[size/2,size/2],popupAnchor:[0,-size/2]});
+  }
+  // 물방울 핀: 뾰족한 끝이 좌표. 사용자 텍스트는 넣지 않고 검증된 색만 사용
+  const w=active?42:32,h=active?58:44,c=col||'#7c3aed',edge=active?'#ff3d6e':null;
+  const body='M16 2C8.8 2 3 7.6 3 14.6c0 9.4 13 27.4 13 27.4s13-18 13-27.4C29 7.6 23.2 2 16 2z';
+  const svg=wish
+    ?`<svg viewBox="0 0 32 44" aria-hidden="true"><path d="${body}" fill="#fff" stroke="${edge||c}" stroke-width="2.5" stroke-dasharray="4 3"/><path d="M16 9.1L17.35 12.74L21.23 12.9L18.19 15.31L19.23 19.05L16 16.9L12.77 19.05L13.81 15.31L10.77 12.9L14.65 12.74Z" fill="${c}"/></svg>`
+    :`<svg viewBox="0 0 32 44" aria-hidden="true"><path d="${body}" fill="${c}" stroke="${edge||'#fff'}" stroke-width="2.5"/><circle cx="16" cy="14.6" r="6" fill="#fff"/><circle cx="16" cy="14.6" r="2.6" fill="${c}"/></svg>`;
+  return L.divIcon({className:cls,html:svg,iconSize:[w,h],iconAnchor:[w/2,h],popupAnchor:[0,-h+4]});
 }
 function refreshPlaceMarkers(){
   if(!window.L)return;
