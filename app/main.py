@@ -182,6 +182,8 @@ def startup() -> None:
             "ALTER TABLE records ADD COLUMN latitude DECIMAL(10,7) NULL",
             "ALTER TABLE records ADD COLUMN longitude DECIMAL(10,7) NULL",
             "ALTER TABLE records ADD COLUMN place_category_id BIGINT NULL",
+            "ALTER TABLE records ADD COLUMN item_kind VARCHAR(50) NULL",
+            "ALTER TABLE records ADD COLUMN giver VARCHAR(100) NULL",
         ):
             try:
                 connection.execute(text(column_sql))
@@ -719,7 +721,7 @@ def get_records(request: Request):
         rows = connection.execute(text("""
             SELECT record_id, record_type, record_date, title, body, category,
                    certainty, tags, place, place_kind, place_category_id, address, latitude, longitude,
-                   image, media_type, images, created_at, updated_at
+                   item_kind, giver, image, media_type, images, created_at, updated_at
             FROM records
             ORDER BY record_date DESC, updated_at DESC
         """)).mappings().all()
@@ -735,6 +737,8 @@ def get_records(request: Request):
         item["placeKind"] = item.pop("place_kind") or "visit"
         item["placeCategoryId"] = item.pop("place_category_id")
         item["address"] = item.pop("address") or ""
+        item["itemKind"] = item.pop("item_kind") or ""
+        item["giver"] = item.pop("giver") or ""
         item["latitude"] = float(item["latitude"]) if item.get("latitude") is not None else None
         item["longitude"] = float(item["longitude"]) if item.get("longitude") is not None else None
         item["mediaType"] = item.pop("media_type") or ("image" if item.get("image") else None)
@@ -805,6 +809,8 @@ def put_records(body: RecordsBody, request: Request):
             "place_kind": parse_place_kind(record.get("placeKind")),
             "place_category_id": parse_place_category_id(record.get("placeCategoryId")),
             "address": str(record.get("address") or "")[:500],
+            "item_kind": str(record.get("itemKind") or "")[:50],
+            "giver": str(record.get("giver") or "")[:100],
             "latitude": parse_coordinate(record.get("latitude"), "위도", 90),
             "longitude": parse_coordinate(record.get("longitude"), "경도", 180),
             "image": primary_media["url"],
@@ -831,10 +837,10 @@ def put_records(body: RecordsBody, request: Request):
             connection.execute(text("""
                 INSERT INTO records
                     (record_id, record_type, record_date, title, body, category,
-                     certainty, tags, place, place_kind, place_category_id, address, latitude, longitude, image, media_type, images, created_at, updated_at)
+                     certainty, tags, place, place_kind, place_category_id, address, latitude, longitude, item_kind, giver, image, media_type, images, created_at, updated_at)
                 VALUES
                     (:record_id, :record_type, :record_date, :title, :body, :category,
-                     :certainty, CAST(:tags AS JSON), :place, :place_kind, :place_category_id, :address, :latitude, :longitude, :image, :media_type, CAST(:images AS JSON), :created_at, :updated_at)
+                     :certainty, CAST(:tags AS JSON), :place, :place_kind, :place_category_id, :address, :latitude, :longitude, :item_kind, :giver, :image, :media_type, CAST(:images AS JSON), :created_at, :updated_at)
             """), rows)
     return {"ok": True, "count": len(rows)}
 

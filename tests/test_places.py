@@ -44,6 +44,8 @@ CREATE_RECORDS = """
         address VARCHAR(500) NULL,
         latitude DECIMAL(10,7) NULL,
         longitude DECIMAL(10,7) NULL,
+        item_kind VARCHAR(50) NULL,
+        giver VARCHAR(100) NULL,
         image VARCHAR(1000) NULL,
         media_type VARCHAR(20) NULL,
         images TEXT NULL,
@@ -216,3 +218,30 @@ def test_parse_coordinate_unit():
         with pytest.raises(main.HTTPException) as info:
             main.parse_coordinate(bad, "x", 90)
         assert info.value.status_code == 422
+
+
+# --- 소유물(아이템) 필드: 물건 종류와 준 사람 (D7) ---
+
+def test_item_kind_and_giver_round_trip(client):
+    item = record(id="gift", type="item", title="생일 선물", itemKind="선물", giver="한얼",
+                  images=[{"url": "/api/photos/a.jpg", "mediaType": "image"}])
+    assert put(client, item).status_code == 200
+    saved = client.get("/api/records").json()["records"][0]
+    assert saved["itemKind"] == "선물"
+    assert saved["giver"] == "한얼"
+
+
+def test_item_fields_default_to_empty_for_old_rows(client):
+    with main.engine.begin() as connection:
+        connection.execute(text(
+            "INSERT INTO records (record_id, record_type, title, tags) VALUES ('old', 'item', '옛 편지', '[]')"))
+    saved = client.get("/api/records").json()["records"][0]
+    assert saved["itemKind"] == ""
+    assert saved["giver"] == ""
+
+
+def test_item_fields_are_trimmed_to_column_size(client):
+    assert put(client, record(type="item", itemKind="가" * 80, giver="나" * 150)).status_code == 200
+    saved = client.get("/api/records").json()["records"][0]
+    assert len(saved["itemKind"]) == 50
+    assert len(saved["giver"]) == 100

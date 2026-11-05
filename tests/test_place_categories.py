@@ -43,6 +43,8 @@ SCHEMA = (
         address VARCHAR(500) NULL,
         latitude DECIMAL(10,7) NULL,
         longitude DECIMAL(10,7) NULL,
+        item_kind VARCHAR(50) NULL,
+        giver VARCHAR(100) NULL,
         image VARCHAR(1000) NULL,
         media_type VARCHAR(20) NULL,
         images TEXT NULL,
