@@ -22,3 +22,13 @@ def test_render_fills_tag_view():
     body = render_body()
     for target in ("#tagCloud", "#tagResultTitle", "#tagResults"):
         assert f"$('{target}').innerHTML" in body or f"$('{target}').textContent" in body, target
+
+
+def test_music_and_movie_menu_is_wired():
+    assert 'data-view="culture"' in HTML and 'id="view-culture"' in HTML
+    assert "music:'음악'" in HTML and "movie:'영화'" in HTML
+    type_select = HTML[HTML.index('<select id="type"'):]
+    type_select = type_select[:type_select.index("</select>")]
+    for value in ("music", "movie"):
+        assert type_select.count(f'<option value="{value}">') == 1, value
+    assert "renderCultureView();" in render_body()

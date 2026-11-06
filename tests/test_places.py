@@ -245,3 +245,14 @@ def test_item_fields_are_trimmed_to_column_size(client):
     saved = client.get("/api/records").json()["records"][0]
     assert len(saved["itemKind"]) == 50
     assert len(saved["giver"]) == 100
+
+
+# --- 음악·영화 기록: 날짜와 메모가 그대로 저장된다 ---
+
+def test_music_and_movie_records_round_trip(client):
+    music = record(id="m1", type="music", title="밤편지", date="2026-11-01", body="드라이브하면서 같이 들음", tags=["드라이브"])
+    movie = record(id="v1", type="movie", title="첫 영화", date="2026-10-31", body="CGV에서", place="CGV")
+    assert put(client, music, movie).status_code == 200
+    saved = {r["id"]: r for r in client.get("/api/records").json()["records"]}
+    assert (saved["m1"]["type"], saved["m1"]["date"], saved["m1"]["body"], saved["m1"]["tags"]) == ("music", "2026-11-01", "드라이브하면서 같이 들음", ["드라이브"])
+    assert (saved["v1"]["type"], saved["v1"]["date"], saved["v1"]["body"], saved["v1"]["place"]) == ("movie", "2026-10-31", "CGV에서", "CGV")
